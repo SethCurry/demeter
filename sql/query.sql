@@ -18,6 +18,13 @@ RETURNING *;
 -- name: DeleteEnclosure :exec
 DELETE FROM enclosure WHERE id = ?;
 
+-- name: ListEnclosurePlants :many
+SELECT * FROM plant WHERE flow_id IN (
+    SELECT id FROM flow WHERE system_id IN (
+        SELECT id FROM system WHERE enclosure_id = ?
+    )
+);
+
 -- name: GetSystem :one
 SELECT * FROM system WHERE id=? LIMIT 1;
 

@@ -12,6 +12,10 @@ import (
 	sqlite3 "modernc.org/sqlite/lib"
 )
 
+type enclosureRequest struct {
+	Name string `json:"name" binding:"required"`
+}
+
 func listEnclosuresHandler(db *models.Queries) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		enclosures, err := db.ListEnclosures(ctx.Request.Context())
@@ -20,6 +24,19 @@ func listEnclosuresHandler(db *models.Queries) gin.HandlerFunc {
 			return
 		}
 		ctx.JSON(http.StatusOK, enclosures)
+	}
+}
+
+func listEnclosurePlantsHandler(db *models.Queries) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			return
+		}
+
+		plants, err := db.ListEnclosurePlants(ctx.Request.Context(), id)
+		ctx.JSON(http.StatusOK, plants)
 	}
 }
 

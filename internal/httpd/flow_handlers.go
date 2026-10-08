@@ -12,6 +12,12 @@ import (
 	sqlite3 "modernc.org/sqlite/lib"
 )
 
+type flowRequest struct {
+	Name         string `json:"name" binding:"required"`
+	SystemID     int64  `json:"system_id" binding:"required"`
+	ParentFlowID *int64 `json:"parent_flow_id,omitempty"`
+}
+
 func listFlowsHandler(db *models.Queries) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var flows []models.Flow

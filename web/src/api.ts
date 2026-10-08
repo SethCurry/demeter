@@ -144,7 +144,10 @@ export const api = {
   createEnclosure: (name: string) => sendJson<Enclosure>('POST', '/api/enclosures', { name }),
   updateEnclosure: (id: number, name: string) =>
     sendJson<Enclosure>('PUT', `/api/enclosures/${id}`, { name }),
-  deleteEnclosure: (id: number) => sendJson<void>('DELETE', `/api/enclosures/${id}`),
+    deleteEnclosure: (id: number) => sendJson<void>('DELETE', `/api/enclosures/${id}`),
+    enclosurePlants: (id: number, limit?: number) => getJson<Plant[]>(
+      withQuery(`/api/enclosures/${id}/plants`, {limit}),
+  ),
 
   // Systems
   listSystems: (enclosureId?: number) =>

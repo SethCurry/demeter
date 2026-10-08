@@ -5,12 +5,18 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/SethCurry/demeter/internal/models"
 	"github.com/gin-gonic/gin"
 	sqlite "modernc.org/sqlite"
 	sqlite3 "modernc.org/sqlite/lib"
 )
+
+type plantRequest struct {
+	PlantSiteID int64      `json:"plant_site_id" binding:"required"`
+	PlantedOn   *time.Time `json:"planted_on,omitempty"`
+}
 
 func listPlantsHandler(db *models.Queries) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
@@ -125,6 +131,134 @@ func deletePlantHandler(db *models.Queries) gin.HandlerFunc {
 		}
 
 		if err := db.DeletePlant(ctx.Request.Context(), id); err != nil {
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		ctx.Status(http.StatusNoContent)
+	}
+}
+
+type plantNoteRequest struct {
+	PlanID    *int64     `json:"plan_id,omitempty"`
+	Content   *string    `json:"content,omitempty"`
+	Timestamp *time.Time `json:"timestamp,omitempty"`
+}
+
+func listPlantNotesHandler(db *models.Queries) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var notes []models.PlantNote
+		var err error
+		if plantIDStr := ctx.Query("plan_id"); plantIDStr != "" {
+			plantID, parseErr := strconv.ParseInt(plantIDStr, 10, 64)
+			if parseErr != nil {
+				ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid plan_id"})
+				return
+			}
+			notes, err = db.ListPlantNotesByPlant(ctx.Request.Context(), sql.NullInt64{Int64: plantID, Valid: true})
+		} else {
+			notes, err = db.ListPlantNotes(ctx.Request.Context())
+		}
+		if err != nil {
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		ctx.JSON(http.StatusOK, notes)
+	}
+}
+
+func getPlantNoteHandler(db *models.Queries) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			return
+		}
+
+		note, err := db.GetPlantNote(ctx.Request.Context(), id)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "plant note not found"})
+				return
+			}
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		ctx.JSON(http.StatusOK, note)
+	}
+}
+
+func createPlantNoteHandler(db *models.Queries) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req plantNoteRequest
+		if err := ctx.ShouldBindJSON(&req); err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		note, err := db.CreatePlantNote(ctx.Request.Context(), models.CreatePlantNoteParams{
+			PlanID:    toNullInt64(req.PlanID),
+			Timestamp: toTime(req.Timestamp),
+			Content:   toNullString(req.Content),
+		})
+		if err != nil {
+			var sqliteErr *sqlite.Error
+			if errors.As(err, &sqliteErr) && sqliteErr.Code() == sqlite3.SQLITE_CONSTRAINT {
+				ctx.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": "referenced plant does not exist"})
+				return
+			}
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		ctx.JSON(http.StatusCreated, note)
+	}
+}
+
+func updatePlantNoteHandler(db *models.Queries) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			return
+		}
+
+		var req plantNoteRequest
+		if err := ctx.ShouldBindJSON(&req); err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		note, err := db.UpdatePlantNote(ctx.Request.Context(), models.UpdatePlantNoteParams{
+			PlanID:    toNullInt64(req.PlanID),
+			Timestamp: toTime(req.Timestamp),
+			Content:   toNullString(req.Content),
+			ID:        id,
+		})
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "plant note not found"})
+				return
+			}
+			var sqliteErr *sqlite.Error
+			if errors.As(err, &sqliteErr) && sqliteErr.Code() == sqlite3.SQLITE_CONSTRAINT {
+				ctx.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": "referenced plant does not exist"})
+				return
+			}
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		ctx.JSON(http.StatusOK, note)
+	}
+}
+
+func deletePlantNoteHandler(db *models.Queries) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			return
+		}
+
+		if err := db.DeletePlantNote(ctx.Request.Context(), id); err != nil {
 			ctx.AbortWithError(http.StatusInternalServerError, err)
 			return
 		}

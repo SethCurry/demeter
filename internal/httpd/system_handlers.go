@@ -12,6 +12,11 @@ import (
 	sqlite3 "modernc.org/sqlite/lib"
 )
 
+type systemRequest struct {
+	Name        string `json:"name" binding:"required"`
+	EnclosureID int64  `json:"enclosure_id" binding:"required"`
+}
+
 func listSystemsHandler(db *models.Queries) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var systems []models.System

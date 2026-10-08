@@ -63,7 +63,7 @@ const EnclosureDetail: React.FC = () => {
   );
   const flw = useAsync<Flow[]>(() => api.listFlows(), []);
   const sites = useAsync<PlantSite[]>(() => api.listPlantSites(), []);
-  const plants = useAsync<Plant[]>(() => api.listPlants(), []);
+  const plants = useAsync<Plant[]>(() => api.enclosurePlants(enclosureId), []);
   const temps = useAsync<EnclosureAirTemperature[]>(
     () => (validId ? api.listEnclosureAirTemperatures(enclosureId, READING_LIMIT) : Promise.resolve([])),
     [enclosureId]
@@ -359,8 +359,23 @@ const EnclosureDetail: React.FC = () => {
                 )}
               </Card>
             </Col>
-          </Row>
+                  </Row>
 
+
+                  <Card size="small" title={`Notes (${enclosureNotes.length})`}>
+                    <Table
+                      rowKey="ID"
+                      columns={noteColumns}
+                      dataSource={enclosureNotes}
+                      pagination={false}
+                      size="small"
+                      locale={{ emptyText: 'No notes' }}
+                    />
+                  </Card>
+
+
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} lg={12}>
           <Card size="small" title={`Systems (${systems.length})`}>
             <Table
               rowKey="ID"
@@ -370,8 +385,10 @@ const EnclosureDetail: React.FC = () => {
               size="small"
               locale={{ emptyText: 'No systems in this enclosure' }}
             />
-          </Card>
+                          </Card>
+                    </Col>
 
+          <Col xs={24} lg={12}>
           <Card size="small" title={`Flows (${enclosureFlows.length})`}>
             <Table
               rowKey="ID"
@@ -381,7 +398,38 @@ const EnclosureDetail: React.FC = () => {
               size="small"
               locale={{ emptyText: 'No flows in this enclosure' }}
             />
-          </Card>
+                              </Card>
+          </Col>
+                  </Row>
+
+
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} lg={12}>
+                      <Card size="small" title="Recent Air Temperature Readings">
+                        <Table
+                          rowKey="ID"
+                          columns={tempColumns}
+                          dataSource={temperatures}
+                          pagination={false}
+                          size="small"
+                          locale={{ emptyText: 'No temperature readings' }}
+                        />
+                      </Card>
+                    </Col>
+                    <Col xs={24} lg={12}>
+                      <Card size="small" title="Recent Air Humidity Readings">
+                        <Table
+                          rowKey="ID"
+                          columns={humidityColumns}
+                          dataSource={humidities}
+                          pagination={false}
+                          size="small"
+                          locale={{ emptyText: 'No humidity readings' }}
+                        />
+                      </Card>
+                    </Col>
+                  </Row>
+
 
           <Card size="small" title={`Plants (${enclosurePlants.length})`}>
             <Table
@@ -394,43 +442,6 @@ const EnclosureDetail: React.FC = () => {
             />
           </Card>
 
-          <Row gutter={[16, 16]}>
-            <Col xs={24} lg={12}>
-              <Card size="small" title="Recent Air Temperature Readings">
-                <Table
-                  rowKey="ID"
-                  columns={tempColumns}
-                  dataSource={temperatures}
-                  pagination={false}
-                  size="small"
-                  locale={{ emptyText: 'No temperature readings' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} lg={12}>
-              <Card size="small" title="Recent Air Humidity Readings">
-                <Table
-                  rowKey="ID"
-                  columns={humidityColumns}
-                  dataSource={humidities}
-                  pagination={false}
-                  size="small"
-                  locale={{ emptyText: 'No humidity readings' }}
-                />
-              </Card>
-            </Col>
-          </Row>
-
-          <Card size="small" title={`Notes (${enclosureNotes.length})`}>
-            <Table
-              rowKey="ID"
-              columns={noteColumns}
-              dataSource={enclosureNotes}
-              pagination={false}
-              size="small"
-              locale={{ emptyText: 'No notes' }}
-            />
-          </Card>
         </Space>
       </Spin>
 

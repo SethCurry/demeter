@@ -712,6 +712,37 @@ func (q *Queries) ListEnclosureNotes(ctx context.Context) ([]EnclosureNote, erro
 	return items, nil
 }
 
+const listEnclosurePlants = `-- name: ListEnclosurePlants :many
+SELECT id, plant_site_id, planted_on FROM plant WHERE flow_id IN (
+    SELECT id FROM flow WHERE system_id IN (
+        SELECT id FROM system WHERE enclosure_id = ?
+    )
+)
+`
+
+func (q *Queries) ListEnclosurePlants(ctx context.Context, enclosureID int64) ([]Plant, error) {
+	rows, err := q.db.QueryContext(ctx, listEnclosurePlants, enclosureID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Plant
+	for rows.Next() {
+		var i Plant
+		if err := rows.Scan(&i.ID, &i.PlantSiteID, &i.PlantedOn); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEnclosures = `-- name: ListEnclosures :many
 SELECT id, name FROM enclosure
 `

@@ -12,33 +12,6 @@ import (
 
 var upgrader = websocket.Upgrader{}
 
-type enclosureRequest struct {
-	Name string `json:"name" binding:"required"`
-}
-
-type systemRequest struct {
-	Name        string `json:"name" binding:"required"`
-	EnclosureID int64  `json:"enclosure_id" binding:"required"`
-}
-
-type flowRequest struct {
-	Name         string `json:"name" binding:"required"`
-	SystemID     int64  `json:"system_id" binding:"required"`
-	ParentFlowID *int64 `json:"parent_flow_id,omitempty"`
-}
-
-type plantSiteRequest struct {
-	FlowID int64 `json:"flow_id" binding:"required"`
-	X      int64 `json:"x" binding:"required"`
-	Y      int64 `json:"y" binding:"required"`
-	Z      int64 `json:"z" binding:"required"`
-}
-
-type plantRequest struct {
-	PlantSiteID int64      `json:"plant_site_id" binding:"required"`
-	PlantedOn   *time.Time `json:"planted_on,omitempty"`
-}
-
 func toNullTime(t *time.Time) sql.NullTime {
 	if t == nil {
 		return sql.NullTime{Time: time.Now(), Valid: true}
@@ -51,6 +24,25 @@ func toNullInt64(p *int64) sql.NullInt64 {
 		return sql.NullInt64{}
 	}
 	return sql.NullInt64{Int64: *p, Valid: true}
+}
+
+// toNullString converts an optional string pointer into a sql.NullString.
+// A nil pointer (omitted or JSON null) becomes a NULL database value.
+func toNullString(s *string) sql.NullString {
+	if s == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: *s, Valid: true}
+}
+
+// toTime converts an optional time pointer into a non-null time.Time,
+// defaulting to the current time when omitted. Used for note tables whose
+// timestamp column is NOT NULL with no schema default.
+func toTime(t *time.Time) time.Time {
+	if t == nil {
+		return time.Now()
+	}
+	return *t
 }
 
 func createSensorConnectionHandler(db *models.Queries) gin.HandlerFunc {
@@ -84,6 +76,7 @@ func Run(addr string, db *models.Queries) error {
 		enclosures.GET("/:id", getEnclosureHandler(db))
 		enclosures.GET("/:id/air-temperature", listEnclosureAirTemperaturesHandler(db))
 		enclosures.GET("/:id/air-humidity", listEnclosureAirHumidityHandler(db))
+		enclosures.GET("/:id/plants", listEnclosurePlantsHandler(db))
 		enclosures.PUT("/:id", updateEnclosureHandler(db))
 		enclosures.DELETE("/:id", deleteEnclosureHandler(db))
 	}
