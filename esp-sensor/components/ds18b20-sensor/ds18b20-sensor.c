@@ -6,10 +6,7 @@
 #include "demeterws.h"
 #include "ds18b20-sensor.h"
 
-
-
-
-const char *TAG = "ds18b20";
+const char *TAG = "ds18b20-sensor";
 
 onewire_bus_handle_t get_bus_handle() {
     onewire_bus_handle_t bus = NULL;

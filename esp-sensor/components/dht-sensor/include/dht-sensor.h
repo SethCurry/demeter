@@ -4,8 +4,8 @@
 
 */
 
-#ifndef DHT22_H_
-#define DHT22_H_
+#ifndef DHT_SENSOR_H_
+#define DHT_SENSOR_H_
 
 #define DHT_OK 0
 #define DHT_CHECKSUM_ERROR -1

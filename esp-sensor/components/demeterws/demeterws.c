@@ -2,7 +2,7 @@
 #include "esp_log.h"
 #include <stdio.h>
 
-static const char *TAG = "wsconn";
+static const char *TAG = "demeterws";
 
 void send_sensor_data(esp_websocket_client_handle_t client, int target_type, int target_id, int measurement)
 {
