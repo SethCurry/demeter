@@ -1,0 +1,11 @@
+# https://taskfile.dev
+
+version: '3'
+
+tasks:
+  build:
+    cmds:
+      - idf.py build
+  config:
+    cmds:
+      - idf.py menuconfig

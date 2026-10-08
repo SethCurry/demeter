@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Demeter">
+  <!--
+    Maskable variant: full-bleed background (pine-teal) with the droplet-leaf
+    logo scaled into the ~80% safe zone required by maskable icon rules.
+  -->
+  <defs>
+    <linearGradient id="droplet" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#a3b18a" />
+      <stop offset="55%" stop-color="#588157" />
+      <stop offset="100%" stop-color="#344e41" />
+    </linearGradient>
+    <linearGradient id="vein" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#eef0e6" />
+      <stop offset="100%" stop-color="#dad7cd" />
+    </linearGradient>
+  </defs>
+
+  <!-- Full-bleed background for maskable cropping -->
+  <rect x="0" y="0" width="64" height="64" fill="#344e41" />
+
+  <!-- Droplet-leaf scaled into the 80% safe zone (centered, ~44x44) -->
+  <g transform="translate(10 10) scale(0.6875)">
+    <path
+      d="M32 3 C32 3 11 27 11 42 C11 53.5 20.5 61 32 61 C43.5 61 53 53.5 53 42 C53 27 32 3 32 3 Z"
+      fill="url(#droplet)" />
+    <path
+      d="M32 11 C31.2 24 31.2 38 32 56"
+      fill="none" stroke="url(#vein)" stroke-width="2.4"
+      stroke-linecap="round" />
+    <g fill="none" stroke="url(#vein)" stroke-width="1.8" stroke-linecap="round" opacity="0.95">
+      <path d="M32 22 C27 23 22 26 19 31" />
+      <path d="M32 22 C37 23 42 26 45 31" />
+      <path d="M32 33 C26 34 21 37 18 43" />
+      <path d="M32 33 C38 34 43 37 46 43" />
+      <path d="M32 44 C28 45 25 47 23 51" />
+      <path d="M32 44 C36 45 39 47 41 51" />
+    </g>
+    <path
+      d="M24 30 C21 35 20 40 21 44"
+      fill="none" stroke="#ffffff" stroke-width="2.2"
+      stroke-linecap="round" opacity="0.35" />
+  </g>
+</svg>

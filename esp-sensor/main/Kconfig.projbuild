@@ -1,0 +1,44 @@
+menu "Demeter"
+  config WIFI_SSID
+    string "WiFi Network Name"
+    default ""
+    help
+      The name of the network to connect to
+  config WIFI_PASSWORD
+    string "WiFi Password"
+    default ""
+    help
+      The password to use when connecting to wifi
+
+  config WEBSOCKET_URL
+    string "WebSocket URL"
+    default ""
+    help
+      The URL of the WebSocket server to connect to, like ws://1.2.3.4:8123/api/websocket/sensors
+
+  menu "DS18B20 (Water Temperature)"
+    config DS18B20_GPIO
+      int "DS18B20 GPIO Pin"
+      default 0
+      help
+        The GPIO pin to use for the DS18B20 sensor
+    config DS18B20_SYSTEM_ID
+      int "DS18B20 System ID"
+      default 0
+      help
+        The system ID to use for the DS18B20 sensor
+  endmenu
+
+  menu "DHT (Air Temperature/Humidity)"
+    config DHT_GPIO
+      int "DHT GPIO Pin"
+      default 0
+      help
+        The GPIO pin to use for the DHT sensor
+    config DHT_ENCLOSURE_ID
+      int "DHT Enclosure ID"
+      default 0
+      help
+        The enclosure ID to use for the DHT sensor
+  endmenu
+endmenu

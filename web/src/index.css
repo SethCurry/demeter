@@ -1,0 +1,26 @@
+:root {
+  --dust-grey: #dad7cdff;
+  --dry-sage: #a3b18aff;
+  --fern: #588157ff;
+  --hunter-green: #3a5a40ff;
+  --pine-teal: #344e41ff;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--dust-grey);
+}
+
+#root {
+  height: 100%;
+}
+
+/* A gentle green gradient for the app shell, dust-grey to dry-sage. */
+.ant-layout {
+  background: linear-gradient(180deg, #dad7cd 0%, #c2c4b3 100%) !important;
+}

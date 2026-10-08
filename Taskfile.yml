@@ -1,0 +1,13 @@
+# https://taskfile.dev
+
+version: '3'
+
+tasks:
+  sqlc:
+    cmds:
+      - sqlc generate
+  site:
+    dir: web
+    cmds:
+      - npm install
+      - npm start
