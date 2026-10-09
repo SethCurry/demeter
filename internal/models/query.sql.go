@@ -130,20 +130,39 @@ func (q *Queries) CreateFlowRate(ctx context.Context, arg CreateFlowRateParams) 
 }
 
 const createPlant = `-- name: CreatePlant :one
-INSERT INTO plant (plant_site_id, planted_on)
-VALUES (?, ?)
-RETURNING id, plant_site_id, planted_on
+INSERT INTO plant (plant_site_id, planted_on, species_id)
+VALUES (?, ?, ?)
+RETURNING id, plant_site_id, planted_on, species_id
 `
 
 type CreatePlantParams struct {
 	PlantSiteID int64
 	PlantedOn   sql.NullTime
+	SpeciesID   sql.NullInt64
 }
 
 func (q *Queries) CreatePlant(ctx context.Context, arg CreatePlantParams) (Plant, error) {
-	row := q.db.QueryRowContext(ctx, createPlant, arg.PlantSiteID, arg.PlantedOn)
+	row := q.db.QueryRowContext(ctx, createPlant, arg.PlantSiteID, arg.PlantedOn, arg.SpeciesID)
 	var i Plant
-	err := row.Scan(&i.ID, &i.PlantSiteID, &i.PlantedOn)
+	err := row.Scan(
+		&i.ID,
+		&i.PlantSiteID,
+		&i.PlantedOn,
+		&i.SpeciesID,
+	)
+	return i, err
+}
+
+const createPlantGenus = `-- name: CreatePlantGenus :one
+INSERT INTO plant_genus (name)
+VALUES (?)
+RETURNING id, name
+`
+
+func (q *Queries) CreatePlantGenus(ctx context.Context, name string) (PlantGenu, error) {
+	row := q.db.QueryRowContext(ctx, createPlantGenus, name)
+	var i PlantGenu
+	err := row.Scan(&i.ID, &i.Name)
 	return i, err
 }
 
@@ -238,6 +257,24 @@ func (q *Queries) CreatePlantSiteNote(ctx context.Context, arg CreatePlantSiteNo
 		&i.Timestamp,
 		&i.Content,
 	)
+	return i, err
+}
+
+const createPlantSpecies = `-- name: CreatePlantSpecies :one
+INSERT INTO plant_species (name, plant_genus_id)
+VALUES (?, ?)
+RETURNING id, name, plant_genus_id
+`
+
+type CreatePlantSpeciesParams struct {
+	Name         string
+	PlantGenusID sql.NullInt64
+}
+
+func (q *Queries) CreatePlantSpecies(ctx context.Context, arg CreatePlantSpeciesParams) (PlantSpecy, error) {
+	row := q.db.QueryRowContext(ctx, createPlantSpecies, arg.Name, arg.PlantGenusID)
+	var i PlantSpecy
+	err := row.Scan(&i.ID, &i.Name, &i.PlantGenusID)
 	return i, err
 }
 
@@ -397,6 +434,15 @@ func (q *Queries) DeletePlant(ctx context.Context, id int64) error {
 	return err
 }
 
+const deletePlantGenus = `-- name: DeletePlantGenus :exec
+DELETE FROM plant_genus WHERE id = ?
+`
+
+func (q *Queries) DeletePlantGenus(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deletePlantGenus, id)
+	return err
+}
+
 const deletePlantNote = `-- name: DeletePlantNote :exec
 DELETE FROM plant_note WHERE id = ?
 `
@@ -421,6 +467,15 @@ DELETE FROM plant_site_note WHERE id = ?
 
 func (q *Queries) DeletePlantSiteNote(ctx context.Context, id int64) error {
 	_, err := q.db.ExecContext(ctx, deletePlantSiteNote, id)
+	return err
+}
+
+const deletePlantSpecies = `-- name: DeletePlantSpecies :exec
+DELETE FROM plant_species WHERE id = ?
+`
+
+func (q *Queries) DeletePlantSpecies(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deletePlantSpecies, id)
 	return err
 }
 
@@ -492,13 +547,29 @@ func (q *Queries) GetFlowNote(ctx context.Context, id int64) (FlowNote, error) {
 }
 
 const getPlant = `-- name: GetPlant :one
-SELECT id, plant_site_id, planted_on FROM plant WHERE id=? LIMIT 1
+SELECT id, plant_site_id, planted_on, species_id FROM plant WHERE id=? LIMIT 1
 `
 
 func (q *Queries) GetPlant(ctx context.Context, id int64) (Plant, error) {
 	row := q.db.QueryRowContext(ctx, getPlant, id)
 	var i Plant
-	err := row.Scan(&i.ID, &i.PlantSiteID, &i.PlantedOn)
+	err := row.Scan(
+		&i.ID,
+		&i.PlantSiteID,
+		&i.PlantedOn,
+		&i.SpeciesID,
+	)
+	return i, err
+}
+
+const getPlantGenus = `-- name: GetPlantGenus :one
+SELECT id, name FROM plant_genus WHERE id=? LIMIT 1
+`
+
+func (q *Queries) GetPlantGenus(ctx context.Context, id int64) (PlantGenu, error) {
+	row := q.db.QueryRowContext(ctx, getPlantGenus, id)
+	var i PlantGenu
+	err := row.Scan(&i.ID, &i.Name)
 	return i, err
 }
 
@@ -548,6 +619,17 @@ func (q *Queries) GetPlantSiteNote(ctx context.Context, id int64) (PlantSiteNote
 		&i.Timestamp,
 		&i.Content,
 	)
+	return i, err
+}
+
+const getPlantSpecies = `-- name: GetPlantSpecies :one
+SELECT id, name, plant_genus_id FROM plant_species WHERE id=? LIMIT 1
+`
+
+func (q *Queries) GetPlantSpecies(ctx context.Context, id int64) (PlantSpecy, error) {
+	row := q.db.QueryRowContext(ctx, getPlantSpecies, id)
+	var i PlantSpecy
+	err := row.Scan(&i.ID, &i.Name, &i.PlantGenusID)
 	return i, err
 }
 
@@ -834,9 +916,12 @@ SELECT plant.id            as id,
        plant.plant_site_id as plant_site_id,
        plant_site.x        as x,
        plant_site.y        as y,
-       plant_site.z        as z
+       plant_site.z        as z,
+       flow.name as flow_name,
+       flow.id as flow_id
     FROM plant
     LEFT JOIN plant_site ON plant_site.id = plant.plant_site_id
+    INNER JOIN flow ON flow.id = plant_site.flow_id
     WHERE plant_site.flow_id = ?
 `
 
@@ -847,6 +932,8 @@ type ListFlowPlantsRow struct {
 	X           sql.NullInt64
 	Y           sql.NullInt64
 	Z           sql.NullInt64
+	FlowName    string
+	FlowID      int64
 }
 
 func (q *Queries) ListFlowPlants(ctx context.Context, flowID int64) ([]ListFlowPlantsRow, error) {
@@ -865,6 +952,8 @@ func (q *Queries) ListFlowPlants(ctx context.Context, flowID int64) ([]ListFlowP
 			&i.X,
 			&i.Y,
 			&i.Z,
+			&i.FlowName,
+			&i.FlowID,
 		); err != nil {
 			return nil, err
 		}
@@ -930,6 +1019,33 @@ func (q *Queries) ListFlowsBySystem(ctx context.Context, systemID int64) ([]Flow
 			&i.SystemID,
 			&i.ParentFlowID,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPlantGenera = `-- name: ListPlantGenera :many
+SELECT id, name FROM plant_genus
+`
+
+func (q *Queries) ListPlantGenera(ctx context.Context) ([]PlantGenu, error) {
+	rows, err := q.db.QueryContext(ctx, listPlantGenera)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlantGenu
+	for rows.Next() {
+		var i PlantGenu
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1137,8 +1253,62 @@ func (q *Queries) ListPlantSitesByFlow(ctx context.Context, flowID int64) ([]Pla
 	return items, nil
 }
 
+const listPlantSpecies = `-- name: ListPlantSpecies :many
+SELECT id, name, plant_genus_id FROM plant_species
+`
+
+func (q *Queries) ListPlantSpecies(ctx context.Context) ([]PlantSpecy, error) {
+	rows, err := q.db.QueryContext(ctx, listPlantSpecies)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlantSpecy
+	for rows.Next() {
+		var i PlantSpecy
+		if err := rows.Scan(&i.ID, &i.Name, &i.PlantGenusID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPlantSpeciesByGenus = `-- name: ListPlantSpeciesByGenus :many
+SELECT id, name, plant_genus_id FROM plant_species WHERE plant_genus_id = ?
+`
+
+func (q *Queries) ListPlantSpeciesByGenus(ctx context.Context, plantGenusID sql.NullInt64) ([]PlantSpecy, error) {
+	rows, err := q.db.QueryContext(ctx, listPlantSpeciesByGenus, plantGenusID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlantSpecy
+	for rows.Next() {
+		var i PlantSpecy
+		if err := rows.Scan(&i.ID, &i.Name, &i.PlantGenusID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPlants = `-- name: ListPlants :many
-SELECT id, plant_site_id, planted_on FROM plant
+SELECT id, plant_site_id, planted_on, species_id FROM plant
 `
 
 func (q *Queries) ListPlants(ctx context.Context) ([]Plant, error) {
@@ -1150,7 +1320,12 @@ func (q *Queries) ListPlants(ctx context.Context) ([]Plant, error) {
 	var items []Plant
 	for rows.Next() {
 		var i Plant
-		if err := rows.Scan(&i.ID, &i.PlantSiteID, &i.PlantedOn); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.PlantSiteID,
+			&i.PlantedOn,
+			&i.SpeciesID,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1165,7 +1340,7 @@ func (q *Queries) ListPlants(ctx context.Context) ([]Plant, error) {
 }
 
 const listPlantsBySite = `-- name: ListPlantsBySite :many
-SELECT id, plant_site_id, planted_on FROM plant WHERE plant_site_id = ?
+SELECT id, plant_site_id, planted_on, species_id FROM plant WHERE plant_site_id = ?
 `
 
 func (q *Queries) ListPlantsBySite(ctx context.Context, plantSiteID int64) ([]Plant, error) {
@@ -1177,7 +1352,84 @@ func (q *Queries) ListPlantsBySite(ctx context.Context, plantSiteID int64) ([]Pl
 	var items []Plant
 	for rows.Next() {
 		var i Plant
-		if err := rows.Scan(&i.ID, &i.PlantSiteID, &i.PlantedOn); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.PlantSiteID,
+			&i.PlantedOn,
+			&i.SpeciesID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPlantsBySpecies = `-- name: ListPlantsBySpecies :many
+SELECT id, plant_site_id, planted_on, species_id FROM plant WHERE species_id = ?
+`
+
+func (q *Queries) ListPlantsBySpecies(ctx context.Context, speciesID sql.NullInt64) ([]Plant, error) {
+	rows, err := q.db.QueryContext(ctx, listPlantsBySpecies, speciesID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Plant
+	for rows.Next() {
+		var i Plant
+		if err := rows.Scan(
+			&i.ID,
+			&i.PlantSiteID,
+			&i.PlantedOn,
+			&i.SpeciesID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSystemEC = `-- name: ListSystemEC :many
+SELECT id, system_id, timestamp, ec FROM system_ec
+WHERE system_id = ?
+ORDER BY timestamp DESC
+LIMIT ?
+`
+
+type ListSystemECParams struct {
+	SystemID int64
+	Limit    int64
+}
+
+func (q *Queries) ListSystemEC(ctx context.Context, arg ListSystemECParams) ([]SystemEc, error) {
+	rows, err := q.db.QueryContext(ctx, listSystemEC, arg.SystemID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SystemEc
+	for rows.Next() {
+		var i SystemEc
+		if err := rows.Scan(
+			&i.ID,
+			&i.SystemID,
+			&i.Timestamp,
+			&i.Ec,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1205,6 +1457,86 @@ func (q *Queries) ListSystemNotes(ctx context.Context) ([]SystemNote, error) {
 	for rows.Next() {
 		var i SystemNote
 		if err := rows.Scan(&i.ID, &i.Timestamp, &i.Content); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSystemPH = `-- name: ListSystemPH :many
+SELECT id, system_id, timestamp, ph FROM system_ph
+WHERE system_id = ?
+ORDER BY timestamp DESC
+LIMIT ?
+`
+
+type ListSystemPHParams struct {
+	SystemID int64
+	Limit    int64
+}
+
+func (q *Queries) ListSystemPH(ctx context.Context, arg ListSystemPHParams) ([]SystemPh, error) {
+	rows, err := q.db.QueryContext(ctx, listSystemPH, arg.SystemID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SystemPh
+	for rows.Next() {
+		var i SystemPh
+		if err := rows.Scan(
+			&i.ID,
+			&i.SystemID,
+			&i.Timestamp,
+			&i.Ph,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSystemWaterTemperature = `-- name: ListSystemWaterTemperature :many
+SELECT id, system_id, timestamp, water_temperature_c FROM system_water_temperature
+WHERE system_id = ?
+ORDER BY timestamp DESC
+LIMIT ?
+`
+
+type ListSystemWaterTemperatureParams struct {
+	SystemID int64
+	Limit    int64
+}
+
+func (q *Queries) ListSystemWaterTemperature(ctx context.Context, arg ListSystemWaterTemperatureParams) ([]SystemWaterTemperature, error) {
+	rows, err := q.db.QueryContext(ctx, listSystemWaterTemperature, arg.SystemID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SystemWaterTemperature
+	for rows.Next() {
+		var i SystemWaterTemperature
+		if err := rows.Scan(
+			&i.ID,
+			&i.SystemID,
+			&i.Timestamp,
+			&i.WaterTemperatureC,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1364,21 +1696,51 @@ func (q *Queries) UpdateFlowNote(ctx context.Context, arg UpdateFlowNoteParams) 
 
 const updatePlant = `-- name: UpdatePlant :one
 UPDATE plant
-SET plant_site_id = ?, planted_on = ?
+SET plant_site_id = ?, planted_on = ?, species_id = ?
 WHERE id = ?
-RETURNING id, plant_site_id, planted_on
+RETURNING id, plant_site_id, planted_on, species_id
 `
 
 type UpdatePlantParams struct {
 	PlantSiteID int64
 	PlantedOn   sql.NullTime
+	SpeciesID   sql.NullInt64
 	ID          int64
 }
 
 func (q *Queries) UpdatePlant(ctx context.Context, arg UpdatePlantParams) (Plant, error) {
-	row := q.db.QueryRowContext(ctx, updatePlant, arg.PlantSiteID, arg.PlantedOn, arg.ID)
+	row := q.db.QueryRowContext(ctx, updatePlant,
+		arg.PlantSiteID,
+		arg.PlantedOn,
+		arg.SpeciesID,
+		arg.ID,
+	)
 	var i Plant
-	err := row.Scan(&i.ID, &i.PlantSiteID, &i.PlantedOn)
+	err := row.Scan(
+		&i.ID,
+		&i.PlantSiteID,
+		&i.PlantedOn,
+		&i.SpeciesID,
+	)
+	return i, err
+}
+
+const updatePlantGenus = `-- name: UpdatePlantGenus :one
+UPDATE plant_genus
+SET name = ?
+WHERE id = ?
+RETURNING id, name
+`
+
+type UpdatePlantGenusParams struct {
+	Name string
+	ID   int64
+}
+
+func (q *Queries) UpdatePlantGenus(ctx context.Context, arg UpdatePlantGenusParams) (PlantGenu, error) {
+	row := q.db.QueryRowContext(ctx, updatePlantGenus, arg.Name, arg.ID)
+	var i PlantGenu
+	err := row.Scan(&i.ID, &i.Name)
 	return i, err
 }
 
@@ -1475,6 +1837,26 @@ func (q *Queries) UpdatePlantSiteNote(ctx context.Context, arg UpdatePlantSiteNo
 		&i.Timestamp,
 		&i.Content,
 	)
+	return i, err
+}
+
+const updatePlantSpecies = `-- name: UpdatePlantSpecies :one
+UPDATE plant_species
+SET name = ?, plant_genus_id = ?
+WHERE id = ?
+RETURNING id, name, plant_genus_id
+`
+
+type UpdatePlantSpeciesParams struct {
+	Name         string
+	PlantGenusID sql.NullInt64
+	ID           int64
+}
+
+func (q *Queries) UpdatePlantSpecies(ctx context.Context, arg UpdatePlantSpeciesParams) (PlantSpecy, error) {
+	row := q.db.QueryRowContext(ctx, updatePlantSpecies, arg.Name, arg.PlantGenusID, arg.ID)
+	var i PlantSpecy
+	err := row.Scan(&i.ID, &i.Name, &i.PlantGenusID)
 	return i, err
 }
 

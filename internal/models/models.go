@@ -58,6 +58,7 @@ type Plant struct {
 	ID          int64
 	PlantSiteID int64
 	PlantedOn   sql.NullTime
+	SpeciesID   sql.NullInt64
 }
 
 type PlantGenu struct {

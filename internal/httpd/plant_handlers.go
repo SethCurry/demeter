@@ -9,27 +9,36 @@ import (
 
 	"github.com/SethCurry/demeter/internal/models"
 	"github.com/gin-gonic/gin"
-	sqlite "modernc.org/sqlite"
-	sqlite3 "modernc.org/sqlite/lib"
 )
 
 type plantRequest struct {
 	PlantSiteID int64      `json:"plant_site_id" binding:"required"`
 	PlantedOn   *time.Time `json:"planted_on,omitempty"`
+	SpeciesID   *int64     `json:"species_id,omitempty"`
 }
 
 func listPlantsHandler(db *models.Queries) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var plants []models.Plant
 		var err error
-		if siteIDStr := ctx.Query("plant_site_id"); siteIDStr != "" {
+		siteIDStr := ctx.Query("plant_site_id")
+		speciesIDStr := ctx.Query("species_id")
+		switch {
+		case siteIDStr != "":
 			siteID, parseErr := strconv.ParseInt(siteIDStr, 10, 64)
 			if parseErr != nil {
 				ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid plant_site_id"})
 				return
 			}
 			plants, err = db.ListPlantsBySite(ctx.Request.Context(), siteID)
-		} else {
+		case speciesIDStr != "":
+			speciesID, parseErr := strconv.ParseInt(speciesIDStr, 10, 64)
+			if parseErr != nil {
+				ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid species_id"})
+				return
+			}
+			plants, err = db.ListPlantsBySpecies(ctx.Request.Context(), sql.NullInt64{Int64: speciesID, Valid: true})
+		default:
 			plants, err = db.ListPlants(ctx.Request.Context())
 		}
 		if err != nil {
@@ -72,11 +81,11 @@ func createPlantHandler(db *models.Queries) gin.HandlerFunc {
 		plant, err := db.CreatePlant(ctx.Request.Context(), models.CreatePlantParams{
 			PlantSiteID: req.PlantSiteID,
 			PlantedOn:   toNullTime(req.PlantedOn),
+			SpeciesID:   toNullInt64(req.SpeciesID),
 		})
 		if err != nil {
-			var sqliteErr *sqlite.Error
-			if errors.As(err, &sqliteErr) && sqliteErr.Code() == sqlite3.SQLITE_CONSTRAINT {
-				ctx.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": "referenced plant site does not exist"})
+			if isConstraintViolation(err) {
+				ctx.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": "referenced plant site or species does not exist"})
 				return
 			}
 			ctx.AbortWithError(http.StatusInternalServerError, err)
@@ -103,6 +112,7 @@ func updatePlantHandler(db *models.Queries) gin.HandlerFunc {
 		plant, err := db.UpdatePlant(ctx.Request.Context(), models.UpdatePlantParams{
 			PlantSiteID: req.PlantSiteID,
 			PlantedOn:   toNullTime(req.PlantedOn),
+			SpeciesID:   toNullInt64(req.SpeciesID),
 			ID:          id,
 		})
 		if err != nil {
@@ -110,9 +120,8 @@ func updatePlantHandler(db *models.Queries) gin.HandlerFunc {
 				ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "plant not found"})
 				return
 			}
-			var sqliteErr *sqlite.Error
-			if errors.As(err, &sqliteErr) && sqliteErr.Code() == sqlite3.SQLITE_CONSTRAINT {
-				ctx.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": "referenced plant site does not exist"})
+			if isConstraintViolation(err) {
+				ctx.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": "referenced plant site or species does not exist"})
 				return
 			}
 			ctx.AbortWithError(http.StatusInternalServerError, err)
@@ -201,8 +210,7 @@ func createPlantNoteHandler(db *models.Queries) gin.HandlerFunc {
 			Content:   toNullString(req.Content),
 		})
 		if err != nil {
-			var sqliteErr *sqlite.Error
-			if errors.As(err, &sqliteErr) && sqliteErr.Code() == sqlite3.SQLITE_CONSTRAINT {
+			if isConstraintViolation(err) {
 				ctx.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": "referenced plant does not exist"})
 				return
 			}
@@ -238,8 +246,7 @@ func updatePlantNoteHandler(db *models.Queries) gin.HandlerFunc {
 				ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "plant note not found"})
 				return
 			}
-			var sqliteErr *sqlite.Error
-			if errors.As(err, &sqliteErr) && sqliteErr.Code() == sqlite3.SQLITE_CONSTRAINT {
+			if isConstraintViolation(err) {
 				ctx.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": "referenced plant does not exist"})
 				return
 			}

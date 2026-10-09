@@ -27,12 +27,15 @@ import PlantSites3D from '../components/PlantSites3D';
 import {
   api,
   nullTime,
+  nullInt,
   type Plant,
   type PlantSite,
   type Flow,
   type System,
   type Enclosure,
   type PlantNote,
+  type PlantSpecies,
+  type PlantGenus,
 } from '../api';
 
 const { Title, Text } = Typography;
@@ -54,6 +57,8 @@ const PlantDetail: React.FC = () => {
   const enc = useAsync<Enclosure[]>(() => api.listEnclosures(), []);
   const plants = useAsync<Plant[]>(() => api.listPlants(), []);
   const notes = useAsync<PlantNote[]>(() => api.listPlantNotes(), []);
+  const spec = useAsync<PlantSpecies[]>(() => api.listPlantSpecies(), []);
+  const gen = useAsync<PlantGenus[]>(() => api.listPlantGenera(), []);
 
   const plant = pl.data;
   const plantSites = sites.data ?? [];
@@ -62,20 +67,29 @@ const PlantDetail: React.FC = () => {
   const enclosures = enc.data ?? [];
   const allPlants = plants.data ?? [];
   const allNotes = notes.data ?? [];
+  const allSpecies = spec.data ?? [];
+  const allGenera = gen.data ?? [];
 
   const loading =
-    pl.loading || sites.loading || flw.loading || sys.loading || enc.loading || plants.loading || notes.loading;
+    pl.loading || sites.loading || flw.loading || sys.loading || enc.loading || plants.loading || notes.loading || spec.loading || gen.loading;
   const error =
-    pl.error || sites.error || flw.error || sys.error || enc.error || plants.error || notes.error;
+    pl.error || sites.error || flw.error || sys.error || enc.error || plants.error || notes.error || spec.error || gen.error;
 
   const flowById = new Map(flows.map((f) => [f.ID, f]));
   const systemById = new Map(systems.map((s) => [s.ID, s]));
   const enclosureById = new Map(enclosures.map((e) => [e.ID, e]));
+  const speciesById = new Map(allSpecies.map((s) => [s.ID, s]));
+  const genusById = new Map(allGenera.map((g) => [g.ID, g]));
 
   const site = plant ? plantSites.find((s) => s.ID === plant.PlantSiteID) : undefined;
   const flow = site ? flowById.get(site.FlowID) : undefined;
   const system = flow ? systemById.get(flow.SystemID) : undefined;
   const enclosure = system ? enclosureById.get(system.EnclosureID) : undefined;
+
+  const speciesId = plant ? nullInt(plant.SpeciesID) : null;
+  const species = speciesId != null ? speciesById.get(speciesId) : undefined;
+  const speciesGenusId = species ? nullInt(species.PlantGenusID) : null;
+  const speciesGenus = speciesGenusId != null ? genusById.get(speciesGenusId) : undefined;
 
   // All flows in the same system, so the 3D diagram shows the whole system
   // context with this plant's site highlighted.
@@ -98,6 +112,8 @@ const PlantDetail: React.FC = () => {
     enc.reload();
     plants.reload();
     notes.reload();
+    spec.reload();
+    gen.reload();
   };
 
   if (!validId) {
@@ -172,6 +188,19 @@ const PlantDetail: React.FC = () => {
               <Descriptions.Item label="ID">{plant?.ID ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Planted On">
                 {planted ? new Date(planted).toLocaleDateString() : '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Species">
+                {species ? (
+                  <Button
+                    type="link"
+                    style={{ padding: 0 }}
+                    onClick={() => navigate(`/plant-species/${species.ID}`)}
+                  >
+                    {speciesGenus ? `${speciesGenus.Name} ${species.Name}` : species.Name}
+                  </Button>
+                ) : (
+                  '—'
+                )}
               </Descriptions.Item>
               <Descriptions.Item label="Plant Site">
                 {site ? (

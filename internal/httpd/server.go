@@ -2,12 +2,15 @@ package httpd
 
 import (
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/SethCurry/demeter/internal/models"
 	"github.com/SethCurry/demeter/internal/sensor"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	sqlite "modernc.org/sqlite"
+	sqlite3 "modernc.org/sqlite/lib"
 )
 
 var upgrader = websocket.Upgrader{}
@@ -43,6 +46,22 @@ func toTime(t *time.Time) time.Time {
 		return time.Now()
 	}
 	return *t
+}
+
+// isConstraintViolation reports whether err is any SQLite constraint
+// violation (foreign key, unique, not null, ...). The driver surfaces the
+// extended result codes (e.g. SQLITE_CONSTRAINT_UNIQUE), so the comparison
+// masks off the extended bits and checks the primary SQLITE_CONSTRAINT code.
+func isConstraintViolation(err error) bool {
+	var sqliteErr *sqlite.Error
+	return errors.As(err, &sqliteErr) && sqliteErr.Code()&0xff == sqlite3.SQLITE_CONSTRAINT
+}
+
+// isUniqueViolation reports whether err is a SQLite UNIQUE constraint
+// violation, such as inserting a duplicate value in a unique column.
+func isUniqueViolation(err error) bool {
+	var sqliteErr *sqlite.Error
+	return errors.As(err, &sqliteErr) && sqliteErr.Code() == sqlite3.SQLITE_CONSTRAINT_UNIQUE
 }
 
 func createSensorConnectionHandler(db *models.Queries) gin.HandlerFunc {
@@ -86,6 +105,9 @@ func Run(addr string, db *models.Queries) error {
 		systems.GET("", listSystemsHandler(db))
 		systems.POST("", createSystemHandler(db))
 		systems.GET("/:id", getSystemHandler(db))
+		systems.GET("/:id/ph", listSystemPHHandler(db))
+		systems.GET("/:id/ec", listSystemECHandler(db))
+		systems.GET("/:id/water-temperature", listSystemWaterTemperatureHandler(db))
 		systems.PUT("/:id", updateSystemHandler(db))
 		systems.DELETE("/:id", deleteSystemHandler(db))
 	}
@@ -116,6 +138,24 @@ func Run(addr string, db *models.Queries) error {
 		plants.GET("/:id", getPlantHandler(db))
 		plants.PUT("/:id", updatePlantHandler(db))
 		plants.DELETE("/:id", deletePlantHandler(db))
+	}
+
+	plantGenera := r.Group("/api/plant-genera")
+	{
+		plantGenera.GET("", listPlantGeneraHandler(db))
+		plantGenera.POST("", createPlantGenusHandler(db))
+		plantGenera.GET("/:id", getPlantGenusHandler(db))
+		plantGenera.PUT("/:id", updatePlantGenusHandler(db))
+		plantGenera.DELETE("/:id", deletePlantGenusHandler(db))
+	}
+
+	plantSpecies := r.Group("/api/plant-species")
+	{
+		plantSpecies.GET("", listPlantSpeciesHandler(db))
+		plantSpecies.POST("", createPlantSpeciesHandler(db))
+		plantSpecies.GET("/:id", getPlantSpeciesHandler(db))
+		plantSpecies.PUT("/:id", updatePlantSpeciesHandler(db))
+		plantSpecies.DELETE("/:id", deletePlantSpeciesHandler(db))
 	}
 
 	enclosureNotes := r.Group("/api/enclosure-notes")

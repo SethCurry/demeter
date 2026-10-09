@@ -27,6 +27,11 @@ func listFlowPlantsHandler(db *models.Queries) gin.HandlerFunc {
 		}
 
 		plants, err := db.ListFlowPlants(ctx.Request.Context(), id)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+
+		}
 		ctx.JSON(http.StatusOK, plants)
 	}
 }

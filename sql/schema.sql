@@ -133,7 +133,8 @@ CREATE TABLE plant_species (
 CREATE TABLE plant (
     id INTEGER PRIMARY KEY,
     plant_site_id INTEGER REFERENCES plant_site(id) NOT NULL,
-    planted_on DATETIME DEFAULT CURRENT_TIMESTAMP
+    planted_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+    species_id INTEGER REFERENCES plant_species(id)
 );
 
 CREATE TABLE plant_note (

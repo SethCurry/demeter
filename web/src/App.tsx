@@ -6,6 +6,8 @@ import {
   ExperimentOutlined,
   DeploymentUnitOutlined,
   AimOutlined,
+  ClusterOutlined,
+  TagsOutlined,
   CameraOutlined,
   ToolOutlined,
   SettingOutlined,
@@ -20,6 +22,10 @@ import Flows from './pages/Flows';
 import FlowDetail from './pages/FlowDetail';
 import Plants from './pages/Plants';
 import PlantDetail from './pages/PlantDetail';
+import PlantGenera from './pages/PlantGenera';
+import PlantGenusDetail from './pages/PlantGenusDetail';
+import PlantSpecies from './pages/PlantSpecies';
+import PlantSpeciesDetail from './pages/PlantSpeciesDetail';
 import Photos from './pages/Photos';
 import Maintenance from './pages/Maintenance';
 import Settings from './pages/Settings';
@@ -32,6 +38,8 @@ const menuItems = [
   { key: '/systems', icon: <ExperimentOutlined />, label: 'Systems' },
   { key: '/flows', icon: <DeploymentUnitOutlined />, label: 'Flows' },
   { key: '/plants', icon: <AimOutlined />, label: 'Plants' },
+  { key: '/plant-genera', icon: <ClusterOutlined />, label: 'Genera' },
+  { key: '/plant-species', icon: <TagsOutlined />, label: 'Species' },
   { key: '/photos', icon: <CameraOutlined />, label: 'Photos' },
   { key: '/maintenance', icon: <ToolOutlined />, label: 'Maintenance' },
   { key: '/settings', icon: <SettingOutlined />, label: 'Settings' },
@@ -100,6 +108,10 @@ const App: React.FC = () => {
               <Route path="/flows/:id" element={<FlowDetail />} />
               <Route path="/plants" element={<Plants />} />
               <Route path="/plants/:id" element={<PlantDetail />} />
+              <Route path="/plant-genera" element={<PlantGenera />} />
+              <Route path="/plant-genera/:id" element={<PlantGenusDetail />} />
+              <Route path="/plant-species" element={<PlantSpecies />} />
+              <Route path="/plant-species/:id" element={<PlantSpeciesDetail />} />
               <Route path="/photos" element={<Photos />} />
               <Route path="/maintenance" element={<Maintenance />} />
               <Route path="/settings" element={<Settings />} />

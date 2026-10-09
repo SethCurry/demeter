@@ -77,9 +77,12 @@ SELECT plant.id            as id,
        plant.plant_site_id as plant_site_id,
        plant_site.x        as x,
        plant_site.y        as y,
-       plant_site.z        as z
+       plant_site.z        as z,
+       flow.name as flow_name,
+       flow.id as flow_id
     FROM plant
     LEFT JOIN plant_site ON plant_site.id = plant.plant_site_id
+    INNER JOIN flow ON flow.id = plant_site.flow_id
     WHERE plant_site.flow_id = ?;
 
 -- name: CreateFlow :one
@@ -128,19 +131,65 @@ SELECT * FROM plant;
 -- name: ListPlantsBySite :many
 SELECT * FROM plant WHERE plant_site_id = ?;
 
+-- name: ListPlantsBySpecies :many
+SELECT * FROM plant WHERE species_id = ?;
+
 -- name: CreatePlant :one
-INSERT INTO plant (plant_site_id, planted_on)
-VALUES (?, ?)
+INSERT INTO plant (plant_site_id, planted_on, species_id)
+VALUES (?, ?, ?)
 RETURNING *;
 
 -- name: UpdatePlant :one
 UPDATE plant
-SET plant_site_id = ?, planted_on = ?
+SET plant_site_id = ?, planted_on = ?, species_id = ?
 WHERE id = ?
 RETURNING *;
 
 -- name: DeletePlant :exec
 DELETE FROM plant WHERE id = ?;
+
+-- name: GetPlantGenus :one
+SELECT * FROM plant_genus WHERE id=? LIMIT 1;
+
+-- name: ListPlantGenera :many
+SELECT * FROM plant_genus;
+
+-- name: CreatePlantGenus :one
+INSERT INTO plant_genus (name)
+VALUES (?)
+RETURNING *;
+
+-- name: UpdatePlantGenus :one
+UPDATE plant_genus
+SET name = ?
+WHERE id = ?
+RETURNING *;
+
+-- name: DeletePlantGenus :exec
+DELETE FROM plant_genus WHERE id = ?;
+
+-- name: GetPlantSpecies :one
+SELECT * FROM plant_species WHERE id=? LIMIT 1;
+
+-- name: ListPlantSpecies :many
+SELECT * FROM plant_species;
+
+-- name: ListPlantSpeciesByGenus :many
+SELECT * FROM plant_species WHERE plant_genus_id = ?;
+
+-- name: CreatePlantSpecies :one
+INSERT INTO plant_species (name, plant_genus_id)
+VALUES (?, ?)
+RETURNING *;
+
+-- name: UpdatePlantSpecies :one
+UPDATE plant_species
+SET name = ?, plant_genus_id = ?
+WHERE id = ?
+RETURNING *;
+
+-- name: DeletePlantSpecies :exec
+DELETE FROM plant_species WHERE id = ?;
 
 -- name: GetEnclosureNote :one
 SELECT * FROM enclosure_note WHERE id=? LIMIT 1;
@@ -268,9 +317,21 @@ LIMIT ?;
 INSERT INTO enclosure_air_humidity (enclosure_id, humidity_rh)
 VALUES (?, ?);
 
+-- name: ListSystemPH :many
+SELECT * FROM system_ph
+WHERE system_id = ?
+ORDER BY timestamp DESC
+LIMIT ?;
+
 -- name: CreateSystemPH :exec
 INSERT INTO system_ph (system_id, ph)
 VALUES (?, ?);
+
+-- name: ListSystemEC :many
+SELECT * FROM system_ec
+WHERE system_id = ?
+ORDER BY timestamp DESC
+LIMIT ?;
 
 -- name: CreateSystemEC :exec
 INSERT INTO system_ec (system_id, ec)
@@ -279,6 +340,12 @@ VALUES (?, ?);
 -- name: CreateSystemOxygen :exec
 INSERT INTO system_oxygen (system_id, oxygen)
 VALUES (?, ?);
+
+-- name: ListSystemWaterTemperature :many
+SELECT * FROM system_water_temperature
+WHERE system_id = ?
+ORDER BY timestamp DESC
+LIMIT ?;
 
 -- name: CreateSystemWaterTemperature :exec
 INSERT INTO system_water_temperature (system_id, water_temperature_c)

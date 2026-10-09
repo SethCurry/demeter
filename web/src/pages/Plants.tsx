@@ -4,7 +4,7 @@ import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useAsync } from '../hooks/useAsync';
 import { useNavigate } from 'react-router-dom';
-import { api, nullTime, type PlantSite, type Flow, type Plant } from '../api';
+import { api, nullTime, nullInt, type PlantSite, type Flow, type Plant, type PlantSpecies, type PlantGenus } from '../api';
 
 const { Title, Text } = Typography;
 
@@ -13,27 +13,44 @@ const Plants: React.FC = () => {
   const sites = useAsync<PlantSite[]>(() => api.listPlantSites(), []);
   const flw = useAsync<Flow[]>(() => api.listFlows(), []);
   const plants = useAsync<Plant[]>(() => api.listPlants(), []);
+  const spec = useAsync<PlantSpecies[]>(() => api.listPlantSpecies(), []);
+  const gen = useAsync<PlantGenus[]>(() => api.listPlantGenera(), []);
 
   const [plantModalOpen, setPlantModalOpen] = useState(false);
   const [siteModalOpen, setSiteModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [plantForm] = Form.useForm<{ plantSiteId: number; plantedOn?: dayjs.Dayjs }>();
+  const [plantForm] = Form.useForm<{ plantSiteId: number; plantedOn?: dayjs.Dayjs; speciesId?: number }>();
   const [siteForm] = Form.useForm<{ flowId: number; x: number; y: number; z: number }>();
 
   const plantSites = sites.data ?? [];
   const flows = flw.data ?? [];
   const allPlants = plants.data ?? [];
-  const loading = sites.loading || flw.loading || plants.loading;
-  const error = sites.error || flw.error || plants.error;
+  const allSpecies = spec.data ?? [];
+  const allGenera = gen.data ?? [];
+  const loading = sites.loading || flw.loading || plants.loading || spec.loading || gen.loading;
+  const error = sites.error || flw.error || plants.error || spec.error || gen.error;
 
   const flowById = new Map(flows.map((f) => [f.ID, f]));
+  const genusById = new Map(allGenera.map((g) => [g.ID, g]));
+  const speciesById = new Map(allSpecies.map((s) => [s.ID, s]));
   const plantBySite = new Map<number, Plant>();
   allPlants.forEach((p) => plantBySite.set(p.PlantSiteID, p));
 
-  const createPlant = (values: { plantSiteId: number; plantedOn?: dayjs.Dayjs }) => {
+  // Renders a species as "Genus species" when the genus is known.
+  const speciesLabel = (s: PlantSpecies) => {
+    const gid = nullInt(s.PlantGenusID);
+    const genus = gid != null ? genusById.get(gid) : undefined;
+    return genus ? `${genus.Name} ${s.Name}` : s.Name;
+  };
+
+  const createPlant = (values: { plantSiteId: number; plantedOn?: dayjs.Dayjs; speciesId?: number }) => {
     setSubmitting(true);
     api
-      .createPlant(values.plantSiteId, values.plantedOn ? values.plantedOn.format('YYYY-MM-DDTHH:mm:ssZ') : undefined)
+      .createPlant(
+        values.plantSiteId,
+        values.plantedOn ? values.plantedOn.format('YYYY-MM-DDTHH:mm:ssZ') : undefined,
+        values.speciesId,
+      )
       .then(() => {
         message.success('Plant added');
         setPlantModalOpen(false);
@@ -85,6 +102,19 @@ const Plants: React.FC = () => {
       },
     },
     {
+      title: 'Species',
+      key: 'species',
+      render: (_: unknown, r: PlantSite) => {
+        const plant = plantBySite.get(r.ID);
+        const sid = plant ? nullInt(plant.SpeciesID) : null;
+        const species = sid != null ? speciesById.get(sid) : undefined;
+        if (!species) return '—';
+        return (
+          <a onClick={() => navigate(`/plant-species/${species.ID}`)}>{speciesLabel(species)}</a>
+        );
+      },
+    },
+    {
       title: 'Planted',
       key: 'plantedOn',
       render: (_: unknown, r: PlantSite) => {
@@ -103,7 +133,7 @@ const Plants: React.FC = () => {
           <Text type="secondary">Plant sites are individual locations within a flow.</Text>
         </div>
         <Space>
-          <Button icon={<ReloadOutlined />} onClick={() => { sites.reload(); flw.reload(); plants.reload(); }}>
+          <Button icon={<ReloadOutlined />} onClick={() => { sites.reload(); flw.reload(); plants.reload(); spec.reload(); gen.reload(); }}>
             Refresh
           </Button>
           <Button icon={<PlusOutlined />} onClick={() => setSiteModalOpen(true)}>
@@ -141,6 +171,13 @@ const Plants: React.FC = () => {
           </Form.Item>
           <Form.Item name="plantedOn" label="Planted On">
             <DatePicker showTime style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="speciesId" label="Species">
+            <Select
+              allowClear
+              options={allSpecies.map((s) => ({ value: s.ID, label: speciesLabel(s) }))}
+              placeholder="Optional species"
+            />
           </Form.Item>
         </Form>
       </Modal>

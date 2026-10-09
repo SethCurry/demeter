@@ -38,6 +38,7 @@ import {
   type SimpleNote,
 } from "../api";
 import PlantListCard from "../components/PlantListCard";
+import PlantSites3D from "../components/PlantSites3D";
 
 const { Title, Text } = Typography;
 
@@ -358,18 +359,20 @@ const FlowDetail: React.FC = () => {
             />
           </Card>
 
-          <Card size="small" title={`Plant Sites (${plantSites.length})`}>
-            <Table
-              rowKey="ID"
-              columns={siteColumns}
-              dataSource={plantSites}
-              pagination={false}
-              size="small"
-              locale={{ emptyText: "No plant sites in this flow" }}
-            />
-          </Card>
-
-          <PlantListCard plants={flowPlants} />
+          <Row gutter={[16, 16]}>
+            <Col xs={36} sm={12}>
+              <Card size="small" title="Plant Site Layout (3D)">
+                <PlantSites3D
+                  flows={flows}
+                  plantSites={plantSites}
+                  plants={flowPlants}
+                />
+              </Card>
+            </Col>
+            <Col xs={36} sm={12}>
+              <PlantListCard plants={flowPlants} />
+            </Col>
+          </Row>
 
           <Card size="small" title={`Notes (${flowNotes.length})`}>
             <Table

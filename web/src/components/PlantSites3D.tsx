@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { Empty, Typography } from 'antd';
-import Plotly from 'plotly.js-dist-min';
-import type { Config, Data, Layout } from 'plotly.js-dist-min';
-import { nullTime, type Flow, type Plant, type PlantSite } from '../api';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Empty, Typography } from "antd";
+import Plotly from "plotly.js-dist-min";
+import type { Config, Data, Layout } from "plotly.js-dist-min";
+import { nullTime, type Flow, type Plant, type PlantSite } from "../api";
 
 const { Text } = Typography;
 
@@ -19,20 +19,9 @@ const { Text } = Typography;
  */
 
 // Distinct palette cycled across flows so legend entries stay readable.
-const FLOW_COLORS = [
-  '#1f77b4', // blue
-  '#2ca02c', // green
-  '#d62728', // red
-  '#9467bd', // purple
-  '#ff7f0e', // orange
-  '#17becf', // cyan
-  '#e377c2', // pink
-  '#8c564b', // brown
-  '#bcbd22', // olive
-  '#7f7f7f', // gray
-];
+const FLOW_COLORS = ["rgba(52,78,65,0.95)"];
 
-const EMPTY_COLOR = '#bfbfbf';
+const EMPTY_COLOR = "rgba(100, 100, 100, 0.5)";
 
 export interface PlantSites3DProps {
   /** Flows to render; each flow becomes one colored legend entry. */
@@ -53,10 +42,10 @@ export interface PlantSites3DProps {
 
 const fmtPlanted = (p: Plant): string => {
   const t = nullTime(p.PlantedOn);
-  return t ? new Date(t).toLocaleDateString() : 'unknown date';
+  return t ? new Date(t).toLocaleDateString() : "unknown date";
 };
 
-const HIGHLIGHT_COLOR = '#d62728'; // red
+const HIGHLIGHT_COLOR = "rgba(52,78,65,0.95)";
 
 const PlantSites3D: React.FC<PlantSites3DProps> = ({
   flows,
@@ -66,6 +55,10 @@ const PlantSites3D: React.FC<PlantSites3DProps> = ({
   highlightSiteId,
 }) => {
   const elRef = useRef<HTMLDivElement>(null);
+
+  const [maxX, setMaxX] = useState(0);
+  const [maxY, setMaxY] = useState(0);
+  const [maxZ, setMaxZ] = useState(0);
 
   const traces = useMemo<Data[]>(() => {
     const flowById = new Map(flows.map((f) => [f.ID, f]));
@@ -90,7 +83,7 @@ const PlantSites3D: React.FC<PlantSites3DProps> = ({
       sites: PlantSite[],
       color: string,
       name: string,
-      showlegend: boolean
+      showlegend: boolean,
     ): Data => {
       const xs: number[] = [];
       const ys: number[] = [];
@@ -99,31 +92,44 @@ const PlantSites3D: React.FC<PlantSites3DProps> = ({
       sites.forEach((s) => {
         const sitePlants = plantsBySite.get(s.ID) ?? [];
         const plantInfo = sitePlants.length
-          ? `Plants: ${sitePlants.map((p) => `#${p.ID} (planted ${fmtPlanted(p)})`).join(', ')}`
-          : 'Empty (no plants)';
+          ? `Plants: ${sitePlants.map((p) => `#${p.ID} (planted ${fmtPlanted(p)})`).join(", ")}`
+          : "Empty (no plants)";
         // Scale plotted coordinates by 4 so adjacent sites have visible
         // gaps between markers. Hover text still reports the true DB coords.
-        xs.push(s.X * 4);
-        ys.push(s.Y * 4);
-        zs.push(s.Z * 4);
+        const newX = s.X * 4;
+        const newY = s.Y * 4;
+        const newZ = s.Z * 4;
+
+        xs.push(newX);
+        if (newX > maxX) {
+          setMaxX(newX);
+        }
+        ys.push(newY);
+        if (newY > maxY) {
+          setMaxY(newY);
+        }
+        zs.push(newZ);
+        if (newZ > maxZ) {
+          setMaxZ(newZ);
+        }
         hovertext.push(
-          `Site #${s.ID} \u2014 ${flow.Name}<br>Position: (${s.X}, ${s.Y}, ${s.Z})<br>${plantInfo}`
+          `Site #${s.ID} \u2014 ${flow.Name}<br>Position: (${s.X}, ${s.Y}, ${s.Z})<br>${plantInfo}`,
         );
       });
       return {
-        type: 'scatter3d',
-        mode: 'markers',
+        type: "scatter3d",
+        mode: "markers",
         name,
         showlegend,
         x: xs,
         y: ys,
         z: zs,
         text: hovertext,
-        hoverinfo: 'text',
+        hoverinfo: "text",
         marker: {
           size: 7,
           color,
-          line: { color: '#ffffff', width: 1 },
+          line: { color: "#ffffff", width: 1 },
         },
       };
     };
@@ -133,8 +139,11 @@ const PlantSites3D: React.FC<PlantSites3DProps> = ({
     if (highlightSiteId !== undefined) {
       // Highlight mode: a single red marker for the chosen site, everything
       // else grey. Legend has just two entries.
-      const highlightFlow = plantSites.find((s) => s.ID === highlightSiteId)?.FlowID;
-      const highlightFlowObj = highlightFlow != null ? flowById.get(highlightFlow) : undefined;
+      const highlightFlow = plantSites.find(
+        (s) => s.ID === highlightSiteId,
+      )?.FlowID;
+      const highlightFlowObj =
+        highlightFlow != null ? flowById.get(highlightFlow) : undefined;
       const highlighted: PlantSite[] = [];
       const others: PlantSite[] = [];
       [...plantSites]
@@ -145,12 +154,22 @@ const PlantSites3D: React.FC<PlantSites3DProps> = ({
         });
       const dummyFlow: Flow = highlightFlowObj ?? {
         ID: -1,
-        Name: 'Site',
+        Name: "Site",
         SystemID: 0,
         ParentFlowID: { Int64: 0, Valid: false },
       };
-      result.push(makeTrace(dummyFlow, highlighted, HIGHLIGHT_COLOR, 'This plant', true));
-      result.push(makeTrace(dummyFlow, others, EMPTY_COLOR, 'Other sites', others.length > 0));
+      result.push(
+        makeTrace(dummyFlow, highlighted, HIGHLIGHT_COLOR, "This plant", true),
+      );
+      result.push(
+        makeTrace(
+          dummyFlow,
+          others,
+          EMPTY_COLOR,
+          "Other sites",
+          others.length > 0,
+        ),
+      );
       return result;
     }
 
@@ -159,15 +178,19 @@ const PlantSites3D: React.FC<PlantSites3DProps> = ({
       .forEach((flow, idx) => {
         const color = FLOW_COLORS[idx % FLOW_COLORS.length];
         const sites = (sitesByFlow.get(flow.ID) ?? []).sort(
-          (a, b) => a.X - b.X || a.Y - b.Y || a.Z - b.Z
+          (a, b) => a.X - b.X || a.Y - b.Y || a.Z - b.Z,
         );
         const occupied = sites.filter((s) => plantsBySite.has(s.ID));
         const empty = sites.filter((s) => !plantsBySite.has(s.ID));
-        result.push(makeTrace(flow, occupied, color, flow.Name, occupied.length > 0));
-        result.push(makeTrace(flow, empty, EMPTY_COLOR, `${flow.Name} (empty)`, false));
+        result.push(
+          makeTrace(flow, occupied, color, flow.Name, occupied.length > 0),
+        );
+        result.push(
+          makeTrace(flow, empty, EMPTY_COLOR, `${flow.Name} (empty)`, false),
+        );
       });
     return result;
-  }, [flows, plantSites, plants, highlightSiteId]);
+  }, [flows, plantSites, plants, highlightSiteId, maxX, maxY, maxZ]);
 
   // Tear down the plot (and its event listeners) only on unmount.
   useEffect(() => {
@@ -184,15 +207,21 @@ const PlantSites3D: React.FC<PlantSites3DProps> = ({
     const layout: Partial<Layout> = {
       margin: { l: 0, r: 0, b: 0, t: 0 },
       showlegend: flows.length > 1 || highlightSiteId !== undefined,
-      hovermode: 'closest',
+      hovermode: "closest",
       // Preserve the user's camera angle/zoom across data refreshes.
-      uirevision: 'plant-sites-3d',
+      uirevision: "plant-sites-3d",
       scene: {
-        aspectmode: 'data',
-        camera: { eye: { x: 1.5, y: 1.5, z: 0.8 } },
-        xaxis: { title: { text: 'X (left \u2192 right)' } },
-        yaxis: { title: { text: 'Y (bottom \u2192 top)' } },
-        zaxis: { title: { text: 'Z (back \u2192 front)' } },
+        aspectmode: "data",
+        camera: {
+          eye: { x: 0, y: 0, z: -2 },
+          up: { x: 0, y: 1, z: 0 },
+          //center: { x: maxX / 2, y: maxY / 2, z: maxZ / 2 },
+        },
+        bgcolor: "#a3b18a",
+        //rgba(52,78,65,0.95)
+        xaxis: { title: { text: "X (left \u2192 right)" } },
+        yaxis: { title: { text: "Y (bottom \u2192 top)" } },
+        zaxis: { title: { text: "Z (back \u2192 front)" } },
       },
     };
 
@@ -205,7 +234,7 @@ const PlantSites3D: React.FC<PlantSites3DProps> = ({
     Plotly.react(el, traces, layout, config).catch(() => {
       /* render can race with unmount; nothing to do */
     });
-  }, [traces, plantSites.length, flows.length]);
+  }, [traces, plantSites.length, flows.length, highlightSiteId]);
 
   if (plantSites.length === 0) {
     return <Empty description="No plant sites to visualize" />;
@@ -213,11 +242,11 @@ const PlantSites3D: React.FC<PlantSites3DProps> = ({
 
   return (
     <div>
-      <div ref={elRef} style={{ width: '100%', height }} />
-      <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+      <div ref={elRef} style={{ width: "100%", height }} />
+      <Text type="secondary" style={{ display: "block", marginTop: 8 }}>
         {highlightSiteId !== undefined
-          ? 'Drag to rotate, scroll to zoom, double-click to reset the view. The red marker is this plant\u2019s site; all other sites are shown in grey.'
-          : 'Drag to rotate, scroll to zoom, double-click to reset the view. Colored markers hold plants; gray markers are empty sites. Each color is a separate flow.'}
+          ? "Drag to rotate, scroll to zoom, double-click to reset the view. The red marker is this plant\u2019s site; all other sites are shown in grey."
+          : "Drag to rotate, scroll to zoom, double-click to reset the view. Colored markers hold plants; gray markers are empty sites. Each color is a separate flow."}
       </Text>
     </div>
   );

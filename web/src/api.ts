@@ -54,15 +54,33 @@ export interface Plant {
   ID: number;
   PlantSiteID: number;
   PlantedOn: NullTime;
+  SpeciesID: NullInt64;
+}
+
+export interface PlantGenus {
+  ID: number;
+  Name: string;
+}
+
+export interface PlantSpecies {
+  ID: number;
+  Name: string;
+  PlantGenusID: NullInt64;
 }
 
 export interface PlantWithFlow extends Plant {
   FlowName: string;
   FlowID: number;
   PlantSiteID: number;
-  X: number;
-  Y: number;
-  Z: number;
+  X: {
+    Int64: number;
+  };
+  Y: {
+    Int64: number;
+  };
+  Z: {
+    Int64: number;
+  };
 }
 
 // "Simple" notes (enclosure/system/flow) share the same shape.
@@ -99,6 +117,27 @@ export interface EnclosureAirHumidity {
   Timestamp: NullTime;
   EnclosureID: number;
   HumidityRh: number;
+}
+
+export interface SystemPh {
+  ID: number;
+  Timestamp: NullTime;
+  SystemID: number;
+  Ph: number;
+}
+
+export interface SystemEc {
+  ID: number;
+  Timestamp: NullTime;
+  SystemID: number;
+  Ec: number;
+}
+
+export interface SystemWaterTemperature {
+  ID: number;
+  Timestamp: NullTime;
+  SystemID: number;
+  WaterTemperatureC: number;
 }
 
 async function getJson<T>(path: string): Promise<T> {
@@ -184,6 +223,14 @@ export const api = {
       enclosure_id: enclosureId,
     }),
   deleteSystem: (id: number) => sendJson<void>("DELETE", `/api/systems/${id}`),
+  listSystemPh: (id: number, limit?: number) =>
+    getJson<SystemPh[]>(withQuery(`/api/systems/${id}/ph`, { limit })),
+  listSystemEc: (id: number, limit?: number) =>
+    getJson<SystemEc[]>(withQuery(`/api/systems/${id}/ec`, { limit })),
+  listSystemWaterTemperature: (id: number, limit?: number) =>
+    getJson<SystemWaterTemperature[]>(
+      withQuery(`/api/systems/${id}/water-temperature`, { limit }),
+    ),
 
   // Flows
   listFlows: (params?: { systemId?: number; parentFlowId?: number }) =>
@@ -243,20 +290,63 @@ export const api = {
     sendJson<void>("DELETE", `/api/plant-sites/${id}`),
 
   // Plants
-  listPlants: (plantSiteId?: number) =>
-    getJson<Plant[]>(withQuery("/api/plants", { plant_site_id: plantSiteId })),
+  listPlants: (params?: { plantSiteId?: number; speciesId?: number }) =>
+    getJson<Plant[]>(
+      withQuery("/api/plants", {
+        plant_site_id: params?.plantSiteId,
+        species_id: params?.speciesId,
+      }),
+    ),
   getPlant: (id: number) => getJson<Plant>(`/api/plants/${id}`),
-  createPlant: (plantSiteId: number, plantedOn?: string) =>
+  createPlant: (plantSiteId: number, plantedOn?: string, speciesId?: number) =>
     sendJson<Plant>("POST", "/api/plants", {
       plant_site_id: plantSiteId,
       planted_on: plantedOn,
+      species_id: speciesId,
     }),
-  updatePlant: (id: number, plantSiteId: number, plantedOn?: string) =>
+  updatePlant: (
+    id: number,
+    plantSiteId: number,
+    plantedOn?: string,
+    speciesId?: number,
+  ) =>
     sendJson<Plant>("PUT", `/api/plants/${id}`, {
       plant_site_id: plantSiteId,
       planted_on: plantedOn,
+      species_id: speciesId,
     }),
   deletePlant: (id: number) => sendJson<void>("DELETE", `/api/plants/${id}`),
+
+  // Plant genera
+  listPlantGenera: () => getJson<PlantGenus[]>("/api/plant-genera"),
+  getPlantGenus: (id: number) =>
+    getJson<PlantGenus>(`/api/plant-genera/${id}`),
+  createPlantGenus: (name: string) =>
+    sendJson<PlantGenus>("POST", "/api/plant-genera", { name }),
+  updatePlantGenus: (id: number, name: string) =>
+    sendJson<PlantGenus>("PUT", `/api/plant-genera/${id}`, { name }),
+  deletePlantGenus: (id: number) =>
+    sendJson<void>("DELETE", `/api/plant-genera/${id}`),
+
+  // Plant species
+  listPlantSpecies: (genusId?: number) =>
+    getJson<PlantSpecies[]>(
+      withQuery("/api/plant-species", { plant_genus_id: genusId }),
+    ),
+  getPlantSpecies: (id: number) =>
+    getJson<PlantSpecies>(`/api/plant-species/${id}`),
+  createPlantSpecies: (name: string, genusId?: number) =>
+    sendJson<PlantSpecies>("POST", "/api/plant-species", {
+      name,
+      plant_genus_id: genusId,
+    }),
+  updatePlantSpecies: (id: number, name: string, genusId?: number) =>
+    sendJson<PlantSpecies>("PUT", `/api/plant-species/${id}`, {
+      name,
+      plant_genus_id: genusId,
+    }),
+  deletePlantSpecies: (id: number) =>
+    sendJson<void>("DELETE", `/api/plant-species/${id}`),
 
   // Notes
   listEnclosureNotes: () => getJson<SimpleNote[]>("/api/enclosure-notes"),

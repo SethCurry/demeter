@@ -216,38 +216,6 @@ const EnclosureDetail: React.FC = () => {
     },
   ];
 
-  const tempColumns = [
-    { title: "ID", dataIndex: "ID", key: "id", width: 60 },
-    {
-      title: "Temperature (°C)",
-      dataIndex: "TemperatureC",
-      key: "temp",
-      render: (v: number) => <Tag color="orange">{v.toFixed(1)}</Tag>,
-    },
-    {
-      title: "Timestamp",
-      key: "ts",
-      render: (_: unknown, r: EnclosureAirTemperature) =>
-        fmtTime(nullTime(r.Timestamp)),
-    },
-  ];
-
-  const humidityColumns = [
-    { title: "ID", dataIndex: "ID", key: "id", width: 60 },
-    {
-      title: "Humidity (% RH)",
-      dataIndex: "HumidityRh",
-      key: "rh",
-      render: (v: number) => <Tag color="blue">{v.toFixed(1)}</Tag>,
-    },
-    {
-      title: "Timestamp",
-      key: "ts",
-      render: (_: unknown, r: EnclosureAirHumidity) =>
-        fmtTime(nullTime(r.Timestamp)),
-    },
-  ];
-
   const noteColumns = [
     { title: "ID", dataIndex: "ID", key: "id", width: 60 },
     {

@@ -136,3 +136,72 @@ func deleteSystemHandler(db *models.Queries) gin.HandlerFunc {
 		ctx.Status(http.StatusNoContent)
 	}
 }
+
+// systemReadingLimit parses the optional "limit" query parameter, applying
+// a sane default and floor so sensor reading lists stay bounded.
+func systemReadingLimit(ctx *gin.Context) int64 {
+	limit := int64(100)
+	if limitStr := ctx.Query("limit"); limitStr != "" {
+		if parsed, parseErr := strconv.ParseInt(limitStr, 10, 64); parseErr == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	return limit
+}
+
+func listSystemPHHandler(db *models.Queries) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			return
+		}
+		readings, err := db.ListSystemPH(ctx.Request.Context(), models.ListSystemPHParams{
+			SystemID: id,
+			Limit:    systemReadingLimit(ctx),
+		})
+		if err != nil {
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		ctx.JSON(http.StatusOK, readings)
+	}
+}
+
+func listSystemECHandler(db *models.Queries) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			return
+		}
+		readings, err := db.ListSystemEC(ctx.Request.Context(), models.ListSystemECParams{
+			SystemID: id,
+			Limit:    systemReadingLimit(ctx),
+		})
+		if err != nil {
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		ctx.JSON(http.StatusOK, readings)
+	}
+}
+
+func listSystemWaterTemperatureHandler(db *models.Queries) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			return
+		}
+		readings, err := db.ListSystemWaterTemperature(ctx.Request.Context(), models.ListSystemWaterTemperatureParams{
+			SystemID: id,
+			Limit:    systemReadingLimit(ctx),
+		})
+		if err != nil {
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		ctx.JSON(http.StatusOK, readings)
+	}
+}

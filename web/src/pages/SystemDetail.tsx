@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Row,
   Col,
@@ -12,7 +12,7 @@ import {
   Alert,
   Spin,
   Descriptions,
-} from 'antd';
+} from "antd";
 import {
   ReloadOutlined,
   RollbackOutlined,
@@ -21,11 +21,13 @@ import {
   AimOutlined,
   HomeOutlined,
   PlusOutlined,
-} from '@ant-design/icons';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAsync } from '../hooks/useAsync';
-import AddNoteModal from '../components/AddNoteModal';
-import PlantSites3D from '../components/PlantSites3D';
+} from "@ant-design/icons";
+import { useParams, useNavigate } from "react-router-dom";
+import { useAsync } from "../hooks/useAsync";
+import AddNoteModal from "../components/AddNoteModal";
+import PhChart from "../components/charts/PhChart";
+import EcChart from "../components/charts/EcChart";
+import WaterTemperatureChart from "../components/charts/WaterTemperatureChart";
 import {
   api,
   nullInt,
@@ -37,9 +39,14 @@ import {
   type PlantSite,
   type Plant,
   type SimpleNote,
-} from '../api';
+  type SystemPh,
+  type SystemEc,
+  type SystemWaterTemperature,
+} from "../api";
 
 const { Title, Text } = Typography;
+
+const READING_LIMIT = 20;
 
 const SystemDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -51,14 +58,37 @@ const SystemDetail: React.FC = () => {
   const validId = Number.isFinite(systemId) && systemId > 0;
 
   const sys = useAsync<System>(
-    () => (validId ? api.getSystem(systemId) : Promise.reject(new Error('invalid id'))),
-    [systemId]
+    () =>
+      validId
+        ? api.getSystem(systemId)
+        : Promise.reject(new Error("invalid id")),
+    [systemId],
   );
   const enc = useAsync<Enclosure[]>(() => api.listEnclosures(), []);
-  const flw = useAsync<Flow[]>(() => api.listFlows(validId ? { systemId } : undefined), [systemId]);
+  const flw = useAsync<Flow[]>(
+    () => api.listFlows(validId ? { systemId } : undefined),
+    [systemId],
+  );
   const sites = useAsync<PlantSite[]>(() => api.listPlantSites(), []);
   const plants = useAsync<Plant[]>(() => api.listPlants(), []);
   const notes = useAsync<SimpleNote[]>(() => api.listSystemNotes(), []);
+  const phReadings = useAsync<SystemPh[]>(
+    () =>
+      validId ? api.listSystemPh(systemId, READING_LIMIT) : Promise.resolve([]),
+    [systemId],
+  );
+  const ecReadings = useAsync<SystemEc[]>(
+    () =>
+      validId ? api.listSystemEc(systemId, READING_LIMIT) : Promise.resolve([]),
+    [systemId],
+  );
+  const waterTemps = useAsync<SystemWaterTemperature[]>(
+    () =>
+      validId
+        ? api.listSystemWaterTemperature(systemId, READING_LIMIT)
+        : Promise.resolve([]),
+    [systemId],
+  );
 
   const system = sys.data;
   const enclosures = enc.data ?? [];
@@ -67,8 +97,26 @@ const SystemDetail: React.FC = () => {
   const allPlants = plants.data ?? [];
   const allNotes = notes.data ?? [];
 
-  const loading = sys.loading || enc.loading || flw.loading || sites.loading || plants.loading || notes.loading;
-  const error = sys.error || enc.error || flw.error || sites.error || plants.error || notes.error;
+  const loading =
+    sys.loading ||
+    enc.loading ||
+    flw.loading ||
+    sites.loading ||
+    plants.loading ||
+    notes.loading ||
+    phReadings.loading ||
+    ecReadings.loading ||
+    waterTemps.loading;
+  const error =
+    sys.error ||
+    enc.error ||
+    flw.error ||
+    sites.error ||
+    plants.error ||
+    notes.error ||
+    phReadings.error ||
+    ecReadings.error ||
+    waterTemps.error;
 
   const enclosureById = new Map(enclosures.map((e) => [e.ID, e]));
   const flowById = new Map(flows.map((f) => [f.ID, f]));
@@ -77,6 +125,11 @@ const SystemDetail: React.FC = () => {
   const systemSites = plantSites.filter((s) => flowIds.has(s.FlowID));
   const siteIds = new Set(systemSites.map((s) => s.ID));
   const systemPlants = allPlants.filter((p) => siteIds.has(p.PlantSiteID));
+
+  // Readings are returned newest-first, so the latest is always index 0.
+  const latestPh = phReadings.data?.[0];
+  const latestEc = ecReadings.data?.[0];
+  const latestWaterTemp = waterTemps.data?.[0];
 
   // Notes belong to this system when their content mentions it; the backend
   // currently exposes a flat list, so we cannot attribute them precisely.
@@ -89,13 +142,19 @@ const SystemDetail: React.FC = () => {
     sites.reload();
     plants.reload();
     notes.reload();
+    phReadings.reload();
+    ecReadings.reload();
+    waterTemps.reload();
   };
 
   if (!validId) {
     return (
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
         <Alert type="error" message="Invalid system id" showIcon />
-        <Button icon={<RollbackOutlined />} onClick={() => navigate('/systems')}>
+        <Button
+          icon={<RollbackOutlined />}
+          onClick={() => navigate("/systems")}
+        >
           Back to systems
         </Button>
       </Space>
@@ -104,9 +163,17 @@ const SystemDetail: React.FC = () => {
 
   if (sys.error) {
     return (
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        <Alert type="error" message="Failed to load system" description={sys.error} showIcon />
-        <Button icon={<RollbackOutlined />} onClick={() => navigate('/systems')}>
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Alert
+          type="error"
+          message="Failed to load system"
+          description={sys.error}
+          showIcon
+        />
+        <Button
+          icon={<RollbackOutlined />}
+          onClick={() => navigate("/systems")}
+        >
           Back to systems
         </Button>
       </Space>
@@ -114,21 +181,22 @@ const SystemDetail: React.FC = () => {
   }
 
   const enclosure = system ? enclosureById.get(system.EnclosureID) : undefined;
-  const fmtTime = (t: string | null) => (t ? new Date(t).toLocaleString() : '—');
+  const fmtTime = (t: string | null) =>
+    t ? new Date(t).toLocaleString() : "—";
 
   const flowColumns = [
-    { title: 'ID', dataIndex: 'ID', key: 'id', width: 60 },
+    { title: "ID", dataIndex: "ID", key: "id", width: 60 },
     {
-      title: 'Name',
-      dataIndex: 'Name',
-      key: 'name',
+      title: "Name",
+      dataIndex: "Name",
+      key: "name",
       render: (name: string, r: Flow) => (
         <a onClick={() => navigate(`/flows/${r.ID}`)}>{name}</a>
       ),
     },
     {
-      title: 'Parent Flow',
-      key: 'parent',
+      title: "Parent Flow",
+      key: "parent",
       render: (_: unknown, r: Flow) => {
         const pid = nullInt(r.ParentFlowID);
         if (pid == null) return <Tag>root</Tag>;
@@ -141,8 +209,8 @@ const SystemDetail: React.FC = () => {
       },
     },
     {
-      title: 'Plant Sites',
-      key: 'sites',
+      title: "Plant Sites",
+      key: "sites",
       render: (_: unknown, r: Flow) => (
         <Tag color="green">
           {plantSites.filter((s) => s.FlowID === r.ID).length}
@@ -152,100 +220,135 @@ const SystemDetail: React.FC = () => {
   ];
 
   const siteColumns = [
-    { title: 'ID', dataIndex: 'ID', key: 'id', width: 60 },
+    { title: "ID", dataIndex: "ID", key: "id", width: 60 },
     {
-      title: 'Flow',
-      key: 'flow',
+      title: "Flow",
+      key: "flow",
       render: (_: unknown, r: PlantSite) => {
         const f = flowById.get(r.FlowID);
-        return f ? <a onClick={() => navigate(`/flows/${f.ID}`)}>{f.Name}</a> : '—';
+        return f ? (
+          <a onClick={() => navigate(`/flows/${f.ID}`)}>{f.Name}</a>
+        ) : (
+          "—"
+        );
       },
     },
     {
-      title: 'Position',
-      key: 'pos',
+      title: "Position",
+      key: "pos",
       render: (_: unknown, r: PlantSite) => `(${r.X}, ${r.Y}, ${r.Z})`,
     },
   ];
 
   const plantColumns = [
-    { title: 'Plant ID', dataIndex: 'ID', key: 'id', width: 80 },
+    { title: "Plant ID", dataIndex: "ID", key: "id", width: 80 },
     {
-      title: 'Site',
-      key: 'site',
+      title: "Site",
+      key: "site",
       render: (_: unknown, r: Plant) => {
         const site = systemSites.find((s) => s.ID === r.PlantSiteID);
-        return site ? `#${site.ID} (${site.X},${site.Y},${site.Z})` : '—';
+        return site ? `#${site.ID} (${site.X},${site.Y},${site.Z})` : "—";
       },
     },
     {
-      title: 'Flow',
-      key: 'flow',
+      title: "Flow",
+      key: "flow",
       render: (_: unknown, r: Plant) => {
         const site = systemSites.find((s) => s.ID === r.PlantSiteID);
-        if (!site) return '—';
+        if (!site) return "—";
         const f = flowById.get(site.FlowID);
-        return f ? <a onClick={() => navigate(`/flows/${f.ID}`)}>{f.Name}</a> : '—';
+        return f ? (
+          <a onClick={() => navigate(`/flows/${f.ID}`)}>{f.Name}</a>
+        ) : (
+          "—"
+        );
       },
     },
     {
-      title: 'Planted',
-      key: 'planted',
+      title: "Planted",
+      key: "planted",
       render: (_: unknown, r: Plant) => {
         const planted = nullTime(r.PlantedOn);
-        return planted ? new Date(planted).toLocaleDateString() : '—';
+        return planted ? new Date(planted).toLocaleDateString() : "—";
       },
     },
   ];
 
   const noteColumns = [
-    { title: 'ID', dataIndex: 'ID', key: 'id', width: 60 },
+    { title: "ID", dataIndex: "ID", key: "id", width: 60 },
     {
-      title: 'Timestamp',
-      key: 'ts',
+      title: "Timestamp",
+      key: "ts",
       render: (_: unknown, r: SimpleNote) => fmtTime(nullTime(r.Timestamp)),
     },
     {
-      title: 'Content',
-      key: 'content',
-      render: (_: unknown, r: SimpleNote) => nullString(r.Content) ?? '—',
+      title: "Content",
+      key: "content",
+      render: (_: unknown, r: SimpleNote) => nullString(r.Content) ?? "—",
     },
   ];
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
+      >
         <div>
           <Space align="center">
             <Button
               icon={<RollbackOutlined />}
-              onClick={() => navigate('/systems')}
+              onClick={() => navigate("/systems")}
               type="text"
             />
             <Title level={3} style={{ marginBottom: 4 }}>
-              <ExperimentOutlined /> {system ? system.Name : `System #${systemId}`}
+              <ExperimentOutlined />{" "}
+              {system ? system.Name : `System #${systemId}`}
             </Title>
           </Space>
-          <Text type="secondary">Details, flows, and contents of this system.</Text>
+          <Text type="secondary">
+            Details, flows, and contents of this system.
+          </Text>
         </div>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={reloadAll}>
             Refresh
           </Button>
-          <Button icon={<PlusOutlined />} onClick={() => setNoteModalOpen(true)}>
+          <Button
+            icon={<PlusOutlined />}
+            onClick={() => setNoteModalOpen(true)}
+          >
             Add Note
           </Button>
         </Space>
       </div>
 
-      {error && <Alert type="error" message="Failed to load data" description={error} showIcon />}
+      {error && (
+        <Alert
+          type="error"
+          message="Failed to load data"
+          description={error}
+          showIcon
+        />
+      )}
 
       <Spin spinning={loading}>
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space direction="vertical" size="large" style={{ width: "100%" }}>
           <Card size="small">
-            <Descriptions title="System" column={{ xs: 1, sm: 2, md: 3 }} size="small">
-              <Descriptions.Item label="ID">{system?.ID ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Name">{system?.Name ?? '—'}</Descriptions.Item>
+            <Descriptions
+              title="System"
+              column={{ xs: 1, sm: 2, md: 3 }}
+              size="small"
+            >
+              <Descriptions.Item label="ID">
+                {system?.ID ?? "—"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Name">
+                {system?.Name ?? "—"}
+              </Descriptions.Item>
               <Descriptions.Item label="Enclosure">
                 {enclosure ? (
                   <Button
@@ -256,36 +359,123 @@ const SystemDetail: React.FC = () => {
                     <HomeOutlined /> {enclosure.Name}
                   </Button>
                 ) : (
-                  '—'
+                  "—"
                 )}
               </Descriptions.Item>
-              <Descriptions.Item label="Flows">{flows.length}</Descriptions.Item>
-              <Descriptions.Item label="Plant Sites">{systemSites.length}</Descriptions.Item>
-              <Descriptions.Item label="Plants">{systemPlants.length}</Descriptions.Item>
+              <Descriptions.Item label="Flows">
+                {flows.length}
+              </Descriptions.Item>
+              <Descriptions.Item label="Plant Sites">
+                {systemSites.length}
+              </Descriptions.Item>
+              <Descriptions.Item label="Plants">
+                {systemPlants.length}
+              </Descriptions.Item>
             </Descriptions>
           </Card>
 
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12} md={8}>
               <Card size="small">
-                <Statistic title="Flows" value={flows.length} prefix={<DeploymentUnitOutlined />} />
+                <Statistic
+                  title="Flows"
+                  value={flows.length}
+                  prefix={<DeploymentUnitOutlined />}
+                />
               </Card>
             </Col>
             <Col xs={24} sm={12} md={8}>
               <Card size="small">
-                <Statistic title="Plant Sites" value={systemSites.length} prefix={<AimOutlined />} />
+                <Statistic
+                  title="Plant Sites"
+                  value={systemSites.length}
+                  prefix={<AimOutlined />}
+                />
               </Card>
             </Col>
             <Col xs={24} sm={12} md={8}>
               <Card size="small">
-                <Statistic title="Plants" value={systemPlants.length} prefix={<AimOutlined />} />
+                <Statistic
+                  title="Plants"
+                  value={systemPlants.length}
+                  prefix={<AimOutlined />}
+                />
               </Card>
             </Col>
           </Row>
 
-          <Card size="small" title="Plant Site Layout (3D)">
-            <PlantSites3D flows={flows} plantSites={systemSites} plants={systemPlants} />
-          </Card>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} lg={8}>
+              <Card size="small" title="Latest pH">
+                {latestPh ? (
+                  <Statistic value={latestPh.Ph} precision={2} suffix="pH" />
+                ) : (
+                  <Text type="secondary">No readings yet</Text>
+                )}
+                {latestPh && (
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    <br />
+                    {fmtTime(nullTime(latestPh.Timestamp))}
+                  </Text>
+                )}
+                <PhChart
+                  label="pH"
+                  data={(phReadings.data ?? []).map((x) => ({
+                    timestamp: x.Timestamp.Time,
+                    ph: x.Ph,
+                  }))}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} lg={8}>
+              <Card size="small" title="Latest EC">
+                {latestEc ? (
+                  <Statistic value={latestEc.Ec} precision={2} suffix="mS/cm" />
+                ) : (
+                  <Text type="secondary">No readings yet</Text>
+                )}
+                {latestEc && (
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    <br />
+                    {fmtTime(nullTime(latestEc.Timestamp))}
+                  </Text>
+                )}
+                <EcChart
+                  label="EC"
+                  data={(ecReadings.data ?? []).map((x) => ({
+                    timestamp: x.Timestamp.Time,
+                    ec: x.Ec,
+                  }))}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} lg={8}>
+              <Card size="small" title="Latest Water Temperature">
+                {latestWaterTemp ? (
+                  <Statistic
+                    value={latestWaterTemp.WaterTemperatureC}
+                    precision={1}
+                    suffix="°C"
+                  />
+                ) : (
+                  <Text type="secondary">No readings yet</Text>
+                )}
+                {latestWaterTemp && (
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    <br />
+                    {fmtTime(nullTime(latestWaterTemp.Timestamp))}
+                  </Text>
+                )}
+                <WaterTemperatureChart
+                  label="Water Temperature"
+                  data={(waterTemps.data ?? []).map((x) => ({
+                    timestamp: x.Timestamp.Time,
+                    temperature: x.WaterTemperatureC,
+                  }))}
+                />
+              </Card>
+            </Col>
+          </Row>
 
           <Card size="small" title={`Flows (${flows.length})`}>
             <Table
@@ -294,7 +484,7 @@ const SystemDetail: React.FC = () => {
               dataSource={flows}
               pagination={false}
               size="small"
-              locale={{ emptyText: 'No flows in this system' }}
+              locale={{ emptyText: "No flows in this system" }}
             />
           </Card>
 
@@ -305,7 +495,7 @@ const SystemDetail: React.FC = () => {
               dataSource={systemSites}
               pagination={false}
               size="small"
-              locale={{ emptyText: 'No plant sites in this system' }}
+              locale={{ emptyText: "No plant sites in this system" }}
             />
           </Card>
 
@@ -316,7 +506,7 @@ const SystemDetail: React.FC = () => {
               dataSource={systemPlants}
               pagination={false}
               size="small"
-              locale={{ emptyText: 'No plants in this system' }}
+              locale={{ emptyText: "No plants in this system" }}
             />
           </Card>
 
@@ -327,7 +517,7 @@ const SystemDetail: React.FC = () => {
               dataSource={systemNotes}
               pagination={false}
               size="small"
-              locale={{ emptyText: 'No notes' }}
+              locale={{ emptyText: "No notes" }}
             />
           </Card>
         </Space>

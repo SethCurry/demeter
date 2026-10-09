@@ -1,22 +1,22 @@
-CREATE TABLE IF NOT EXISTS enclosure (
+CREATE TABLE enclosure (
 	id INTEGER PRIMARY KEY,
 	name TEXT UNIQUE NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS enclosure_note (
+CREATE TABLE enclosure_note (
     id INTEGER PRIMARY KEY,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     content TEXT
 );
 
-CREATE TABLE IF NOT EXISTS enclosure_air_temperature (
+CREATE TABLE enclosure_air_temperature (
 	id INTEGER PRIMARY KEY,
 	timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 	enclosure_id INTEGER REFERENCES enclosure(id) NOT NULL,
 	temperature_c FLOAT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS enclosure_air_humidity (
+CREATE TABLE enclosure_air_humidity (
 	id INTEGER PRIMARY KEY,
 	timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 	enclosure_id INTEGER REFERENCES enclosure(id) NOT NULL,
@@ -24,74 +24,74 @@ CREATE TABLE IF NOT EXISTS enclosure_air_humidity (
 );
 
 
-CREATE TABLE IF NOT EXISTS system (
+CREATE TABLE system (
 	id INTEGER PRIMARY KEY,
 	name TEXT UNIQUE NOT NULL,
 	enclosure_id INTEGER REFERENCES enclosure(id) NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS system_note (
+CREATE TABLE system_note (
     id INTEGER PRIMARY KEY,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     content TEXT
 );
 
-CREATE TABLE IF NOT EXISTS system_ph (
+CREATE TABLE system_ph (
 	id INTEGER PRIMARY KEY,
 	system_id INTEGER REFERENCES system(id) NOT NULL,
 	timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 	ph FLOAT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS system_ec (
+CREATE TABLE system_ec (
 	id INTEGER PRIMARY KEY,
 	system_id INTEGER REFERENCES system(id) NOT NULL,
 	timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 	ec FLOAT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS system_oxygen (
+CREATE TABLE system_oxygen (
 	id INTEGER PRIMARY KEY,
 	system_id INTEGER REFERENCES system(id) NOT NULL,
 	timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 	oxygen FLOAT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS system_water_temperature (
+CREATE TABLE system_water_temperature (
 	id INTEGER PRIMARY KEY,
 	system_id INTEGER REFERENCES system(id) NOT NULL,
 	timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 	water_temperature_c FLOAT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS system_water_proximity (
+CREATE TABLE system_water_proximity (
 	id INTEGER PRIMARY KEY,
 	system_id INTEGER REFERENCES system(id) NOT NULL,
 	timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 	proximity_m FLOAT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS flow (
+CREATE TABLE flow (
 	id INTEGER PRIMARY KEY,
 	name TEXT UNIQUE NOT NULL,
 	system_id INTEGER REFERENCES system(id) NOT NULL,
 	parent_flow_id INTEGER REFERENCES flow(id)
 );
 
-CREATE TABLE IF NOT EXISTS flow_note (
+CREATE TABLE flow_note (
     id INTEGER PRIMARY KEY,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     content TEXT
 );
 
-CREATE TABLE IF NOT EXISTS flow_rate (
+CREATE TABLE flow_rate (
 	id INTEGER PRIMARY KEY,
 	flow_id INTEGER REFERENCES flow(id) NOT NULL,
 	timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 	rate_mps FLOAT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS plant_site (
+CREATE TABLE plant_site (
 	id INTEGER PRIMARY KEY,
 	flow_id INTEGER REFERENCES flow(id) NOT NULL,
 
@@ -105,38 +105,39 @@ CREATE TABLE IF NOT EXISTS plant_site (
 	z INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS plant_site_note (
+CREATE TABLE plant_site_note (
     id INTEGER PRIMARY KEY,
     plant_site_id INTEGER REFERENCES plant_site(id) NOT NULL,
     timestamp DATETIME NOT NULL,
     content TEXT
 );
 
-CREATE TABLE IF NOT EXISTS plant_site_lux (
+CREATE TABLE plant_site_lux (
 	id INTEGER PRIMARY KEY,
 	plant_site_id INTEGER REFERENCES plant_site(id) NOT NULL,
 	timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 	lux INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS plant_genus (
+CREATE TABLE plant_genus (
     id INTEGER PRIMARY KEY,
     name TEXT UNIQUE NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS plant_species (
+CREATE TABLE plant_species (
     id INTEGER PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
     plant_genus_id INTEGER REFERENCES plant_genus(id)
 );
 
-CREATE TABLE IF NOT EXISTS plant (
+CREATE TABLE plant (
     id INTEGER PRIMARY KEY,
     plant_site_id INTEGER REFERENCES plant_site(id) NOT NULL,
-    planted_on DATETIME DEFAULT CURRENT_TIMESTAMP
+    planted_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+    species_id INTEGER REFERENCES plant_species(id)
 );
 
-CREATE TABLE IF NOT EXISTS plant_note (
+CREATE TABLE plant_note (
     id INTEGER PRIMARY KEY,
     plan_id INTEGER REFERENCES plant(id),
     timestamp DATETIME NOT NULL,
