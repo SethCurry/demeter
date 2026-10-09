@@ -97,6 +97,7 @@ func Run(addr string, db *models.Queries) error {
 		flows.GET("/:id", getFlowHandler(db))
 		flows.PUT("/:id", updateFlowHandler(db))
 		flows.DELETE("/:id", deleteFlowHandler(db))
+		flows.GET("/:id/plants", listFlowPlantsHandler(db))
 	}
 
 	plantSites := r.Group("/api/plant-sites")

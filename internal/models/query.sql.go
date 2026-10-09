@@ -713,23 +713,54 @@ func (q *Queries) ListEnclosureNotes(ctx context.Context) ([]EnclosureNote, erro
 }
 
 const listEnclosurePlants = `-- name: ListEnclosurePlants :many
-SELECT id, plant_site_id, planted_on FROM plant WHERE flow_id IN (
-    SELECT id FROM flow WHERE system_id IN (
-        SELECT id FROM system WHERE enclosure_id = ?
+SELECT plant.id            as id,
+       plant.planted_on    as planted_on,
+       plant.plant_site_id as plant_site_id,
+       plant_site.x        as x,
+       plant_site.y        as y,
+       plant_site.z        as z,
+       flow.id             as flow_id,
+       flow.name           as flow_name
+    FROM plant
+    LEFT JOIN plant_site ON plant_site.id = plant.plant_site_id
+    LEFT JOIN flow ON flow.id = plant_site.flow_id
+    WHERE plant_site.flow_id IN (
+        SELECT id FROM flow WHERE system_id IN (
+            SELECT id FROM system WHERE enclosure_id = ?
+        )
     )
-)
 `
 
-func (q *Queries) ListEnclosurePlants(ctx context.Context, enclosureID int64) ([]Plant, error) {
+type ListEnclosurePlantsRow struct {
+	ID          int64
+	PlantedOn   sql.NullTime
+	PlantSiteID int64
+	X           sql.NullInt64
+	Y           sql.NullInt64
+	Z           sql.NullInt64
+	FlowID      sql.NullInt64
+	FlowName    sql.NullString
+}
+
+func (q *Queries) ListEnclosurePlants(ctx context.Context, enclosureID int64) ([]ListEnclosurePlantsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listEnclosurePlants, enclosureID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Plant
+	var items []ListEnclosurePlantsRow
 	for rows.Next() {
-		var i Plant
-		if err := rows.Scan(&i.ID, &i.PlantSiteID, &i.PlantedOn); err != nil {
+		var i ListEnclosurePlantsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PlantedOn,
+			&i.PlantSiteID,
+			&i.X,
+			&i.Y,
+			&i.Z,
+			&i.FlowID,
+			&i.FlowName,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -784,6 +815,57 @@ func (q *Queries) ListFlowNotes(ctx context.Context) ([]FlowNote, error) {
 	for rows.Next() {
 		var i FlowNote
 		if err := rows.Scan(&i.ID, &i.Timestamp, &i.Content); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFlowPlants = `-- name: ListFlowPlants :many
+SELECT plant.id            as id,
+       plant.planted_on    as planted_on,
+       plant.plant_site_id as plant_site_id,
+       plant_site.x        as x,
+       plant_site.y        as y,
+       plant_site.z        as z
+    FROM plant
+    LEFT JOIN plant_site ON plant_site.id = plant.plant_site_id
+    WHERE plant_site.flow_id = ?
+`
+
+type ListFlowPlantsRow struct {
+	ID          int64
+	PlantedOn   sql.NullTime
+	PlantSiteID int64
+	X           sql.NullInt64
+	Y           sql.NullInt64
+	Z           sql.NullInt64
+}
+
+func (q *Queries) ListFlowPlants(ctx context.Context, flowID int64) ([]ListFlowPlantsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listFlowPlants, flowID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListFlowPlantsRow
+	for rows.Next() {
+		var i ListFlowPlantsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PlantedOn,
+			&i.PlantSiteID,
+			&i.X,
+			&i.Y,
+			&i.Z,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

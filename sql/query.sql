@@ -19,11 +19,22 @@ RETURNING *;
 DELETE FROM enclosure WHERE id = ?;
 
 -- name: ListEnclosurePlants :many
-SELECT * FROM plant WHERE flow_id IN (
-    SELECT id FROM flow WHERE system_id IN (
-        SELECT id FROM system WHERE enclosure_id = ?
-    )
-);
+SELECT plant.id            as id,
+       plant.planted_on    as planted_on,
+       plant.plant_site_id as plant_site_id,
+       plant_site.x        as x,
+       plant_site.y        as y,
+       plant_site.z        as z,
+       flow.id             as flow_id,
+       flow.name           as flow_name
+    FROM plant
+    LEFT JOIN plant_site ON plant_site.id = plant.plant_site_id
+    LEFT JOIN flow ON flow.id = plant_site.flow_id
+    WHERE plant_site.flow_id IN (
+        SELECT id FROM flow WHERE system_id IN (
+            SELECT id FROM system WHERE enclosure_id = ?
+        )
+    );
 
 -- name: GetSystem :one
 SELECT * FROM system WHERE id=? LIMIT 1;
@@ -59,6 +70,17 @@ SELECT * FROM flow WHERE system_id = ?;
 
 -- name: ListChildFlows :many
 SELECT * FROM flow WHERE parent_flow_id = ?;
+
+-- name: ListFlowPlants :many
+SELECT plant.id            as id,
+       plant.planted_on    as planted_on,
+       plant.plant_site_id as plant_site_id,
+       plant_site.x        as x,
+       plant_site.y        as y,
+       plant_site.z        as z
+    FROM plant
+    LEFT JOIN plant_site ON plant_site.id = plant.plant_site_id
+    WHERE plant_site.flow_id = ?;
 
 -- name: CreateFlow :one
 INSERT INTO flow (name, system_id, parent_flow_id)

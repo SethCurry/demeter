@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Row,
   Col,
@@ -12,7 +12,7 @@ import {
   Alert,
   Spin,
   Descriptions,
-} from 'antd';
+} from "antd";
 import {
   ReloadOutlined,
   RollbackOutlined,
@@ -21,10 +21,10 @@ import {
   DeploymentUnitOutlined,
   AimOutlined,
   PlusOutlined,
-} from '@ant-design/icons';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAsync } from '../hooks/useAsync';
-import AddNoteModal from '../components/AddNoteModal';
+} from "@ant-design/icons";
+import { useParams, useNavigate } from "react-router-dom";
+import { useAsync } from "../hooks/useAsync";
+import AddNoteModal from "../components/AddNoteModal";
 import {
   api,
   nullInt,
@@ -34,9 +34,10 @@ import {
   type System,
   type Enclosure,
   type PlantSite,
-  type Plant,
+  type PlantWithFlow,
   type SimpleNote,
-} from '../api';
+} from "../api";
+import PlantListCard from "../components/PlantListCard";
 
 const { Title, Text } = Typography;
 
@@ -50,14 +51,15 @@ const FlowDetail: React.FC = () => {
   const validId = Number.isFinite(flowId) && flowId > 0;
 
   const flw = useAsync<Flow>(
-    () => (validId ? api.getFlow(flowId) : Promise.reject(new Error('invalid id'))),
-    [flowId]
+    () =>
+      validId ? api.getFlow(flowId) : Promise.reject(new Error("invalid id")),
+    [flowId],
   );
   const allFlows = useAsync<Flow[]>(() => api.listFlows(), []);
   const sys = useAsync<System[]>(() => api.listSystems(), []);
   const enc = useAsync<Enclosure[]>(() => api.listEnclosures(), []);
   const sites = useAsync<PlantSite[]>(() => api.listPlantSites(), []);
-  const plants = useAsync<Plant[]>(() => api.listPlants(), []);
+  const plants = useAsync<PlantWithFlow[]>(() => api.flowPlants(flowId), []);
   const notes = useAsync<SimpleNote[]>(() => api.listFlowNotes(), []);
 
   const flow = flw.data;
@@ -70,9 +72,21 @@ const FlowDetail: React.FC = () => {
   const allNotes = notes.data ?? [];
 
   const loading =
-    flw.loading || allFlows.loading || sys.loading || enc.loading || sites.loading || plants.loading || notes.loading;
+    flw.loading ||
+    allFlows.loading ||
+    sys.loading ||
+    enc.loading ||
+    sites.loading ||
+    plants.loading ||
+    notes.loading;
   const error =
-    flw.error || allFlows.error || sys.error || enc.error || sites.error || plants.error || notes.error;
+    flw.error ||
+    allFlows.error ||
+    sys.error ||
+    enc.error ||
+    sites.error ||
+    plants.error ||
+    notes.error;
 
   const systemById = new Map(systems.map((s) => [s.ID, s]));
   const enclosureById = new Map(enclosures.map((e) => [e.ID, e]));
@@ -100,9 +114,9 @@ const FlowDetail: React.FC = () => {
 
   if (!validId) {
     return (
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
         <Alert type="error" message="Invalid flow id" showIcon />
-        <Button icon={<RollbackOutlined />} onClick={() => navigate('/flows')}>
+        <Button icon={<RollbackOutlined />} onClick={() => navigate("/flows")}>
           Back to flows
         </Button>
       </Space>
@@ -111,9 +125,14 @@ const FlowDetail: React.FC = () => {
 
   if (flw.error) {
     return (
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        <Alert type="error" message="Failed to load flow" description={flw.error} showIcon />
-        <Button icon={<RollbackOutlined />} onClick={() => navigate('/flows')}>
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Alert
+          type="error"
+          message="Failed to load flow"
+          description={flw.error}
+          showIcon
+        />
+        <Button icon={<RollbackOutlined />} onClick={() => navigate("/flows")}>
           Back to flows
         </Button>
       </Space>
@@ -123,23 +142,29 @@ const FlowDetail: React.FC = () => {
   const system = flow ? systemById.get(flow.SystemID) : undefined;
   const enclosure = system ? enclosureById.get(system.EnclosureID) : undefined;
   const parentFlowId = flow ? nullInt(flow.ParentFlowID) : null;
-  const parentFlow = parentFlowId != null ? flowById.get(parentFlowId) : undefined;
-  const fmtTime = (t: string | null) => (t ? new Date(t).toLocaleString() : '—');
+  const parentFlow =
+    parentFlowId != null ? flowById.get(parentFlowId) : undefined;
+  const fmtTime = (t: string | null) =>
+    t ? new Date(t).toLocaleString() : "—";
 
   const childFlowColumns = [
-    { title: 'ID', dataIndex: 'ID', key: 'id', width: 60 },
+    { title: "ID", dataIndex: "ID", key: "id", width: 60 },
     {
-      title: 'Name',
-      key: 'name',
+      title: "Name",
+      key: "name",
       render: (_: unknown, r: Flow) => (
-        <Button type="link" style={{ padding: 0 }} onClick={() => navigate(`/flows/${r.ID}`)}>
+        <Button
+          type="link"
+          style={{ padding: 0 }}
+          onClick={() => navigate(`/flows/${r.ID}`)}
+        >
           {r.Name}
         </Button>
       ),
     },
     {
-      title: 'Plant Sites',
-      key: 'sites',
+      title: "Plant Sites",
+      key: "sites",
       render: (_: unknown, r: Flow) => (
         <Tag color="green">
           {allPlantSites.filter((s) => s.FlowID === r.ID).length}
@@ -149,89 +174,97 @@ const FlowDetail: React.FC = () => {
   ];
 
   const siteColumns = [
-    { title: 'ID', dataIndex: 'ID', key: 'id', width: 60 },
+    { title: "ID", dataIndex: "ID", key: "id", width: 60 },
     {
-      title: 'Position',
-      key: 'pos',
+      title: "Position",
+      key: "pos",
       render: (_: unknown, r: PlantSite) => `(${r.X}, ${r.Y}, ${r.Z})`,
     },
     {
-      title: 'Plants',
-      key: 'plants',
+      title: "Plants",
+      key: "plants",
       render: (_: unknown, r: PlantSite) => (
-        <Tag color="green">{allPlants.filter((p) => p.PlantSiteID === r.ID).length}</Tag>
+        <Tag color="green">
+          {allPlants.filter((p) => p.PlantSiteID === r.ID).length}
+        </Tag>
       ),
     },
   ];
 
-  const plantColumns = [
-    { title: 'Plant ID', dataIndex: 'ID', key: 'id', width: 80 },
-    {
-      title: 'Site',
-      key: 'site',
-      render: (_: unknown, r: Plant) => {
-        const site = plantSites.find((s) => s.ID === r.PlantSiteID);
-        return site ? `#${site.ID} (${site.X},${site.Y},${site.Z})` : '—';
-      },
-    },
-    {
-      title: 'Planted',
-      key: 'planted',
-      render: (_: unknown, r: Plant) => {
-        const planted = nullTime(r.PlantedOn);
-        return planted ? new Date(planted).toLocaleDateString() : '—';
-      },
-    },
-  ];
-
   const noteColumns = [
-    { title: 'ID', dataIndex: 'ID', key: 'id', width: 60 },
+    { title: "ID", dataIndex: "ID", key: "id", width: 60 },
     {
-      title: 'Timestamp',
-      key: 'ts',
+      title: "Timestamp",
+      key: "ts",
       render: (_: unknown, r: SimpleNote) => fmtTime(nullTime(r.Timestamp)),
     },
     {
-      title: 'Content',
-      key: 'content',
-      render: (_: unknown, r: SimpleNote) => nullString(r.Content) ?? '—',
+      title: "Content",
+      key: "content",
+      render: (_: unknown, r: SimpleNote) => nullString(r.Content) ?? "—",
     },
   ];
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
+      >
         <div>
           <Space align="center">
             <Button
               icon={<RollbackOutlined />}
-              onClick={() => navigate('/flows')}
+              onClick={() => navigate("/flows")}
               type="text"
             />
             <Title level={3} style={{ marginBottom: 4 }}>
               <DeploymentUnitOutlined /> {flow ? flow.Name : `Flow #${flowId}`}
             </Title>
           </Space>
-          <Text type="secondary">Details, plant sites, and contents of this flow.</Text>
+          <Text type="secondary">
+            Details, plant sites, and contents of this flow.
+          </Text>
         </div>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={reloadAll}>
             Refresh
           </Button>
-          <Button icon={<PlusOutlined />} onClick={() => setNoteModalOpen(true)}>
+          <Button
+            icon={<PlusOutlined />}
+            onClick={() => setNoteModalOpen(true)}
+          >
             Add Note
           </Button>
         </Space>
       </div>
 
-      {error && <Alert type="error" message="Failed to load data" description={error} showIcon />}
+      {error && (
+        <Alert
+          type="error"
+          message="Failed to load data"
+          description={error}
+          showIcon
+        />
+      )}
 
       <Spin spinning={loading}>
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space direction="vertical" size="large" style={{ width: "100%" }}>
           <Card size="small">
-            <Descriptions title="Flow" column={{ xs: 1, sm: 2, md: 3 }} size="small">
-              <Descriptions.Item label="ID">{flow?.ID ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Name">{flow?.Name ?? '—'}</Descriptions.Item>
+            <Descriptions
+              title="Flow"
+              column={{ xs: 1, sm: 2, md: 3 }}
+              size="small"
+            >
+              <Descriptions.Item label="ID">
+                {flow?.ID ?? "—"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Name">
+                {flow?.Name ?? "—"}
+              </Descriptions.Item>
               <Descriptions.Item label="Parent Flow">
                 {parentFlowId != null ? (
                   <Button
@@ -239,7 +272,8 @@ const FlowDetail: React.FC = () => {
                     style={{ padding: 0 }}
                     onClick={() => navigate(`/flows/${parentFlowId}`)}
                   >
-                    <DeploymentUnitOutlined /> {parentFlow?.Name ?? `#${parentFlowId}`}
+                    <DeploymentUnitOutlined />{" "}
+                    {parentFlow?.Name ?? `#${parentFlowId}`}
                   </Button>
                 ) : (
                   <Tag>root</Tag>
@@ -255,7 +289,7 @@ const FlowDetail: React.FC = () => {
                     <ExperimentOutlined /> {system.Name}
                   </Button>
                 ) : (
-                  '—'
+                  "—"
                 )}
               </Descriptions.Item>
               <Descriptions.Item label="Enclosure">
@@ -268,12 +302,18 @@ const FlowDetail: React.FC = () => {
                     <HomeOutlined /> {enclosure.Name}
                   </Button>
                 ) : (
-                  '—'
+                  "—"
                 )}
               </Descriptions.Item>
-              <Descriptions.Item label="Child Flows">{childFlows.length}</Descriptions.Item>
-              <Descriptions.Item label="Plant Sites">{plantSites.length}</Descriptions.Item>
-              <Descriptions.Item label="Plants">{flowPlants.length}</Descriptions.Item>
+              <Descriptions.Item label="Child Flows">
+                {childFlows.length}
+              </Descriptions.Item>
+              <Descriptions.Item label="Plant Sites">
+                {plantSites.length}
+              </Descriptions.Item>
+              <Descriptions.Item label="Plants">
+                {flowPlants.length}
+              </Descriptions.Item>
             </Descriptions>
           </Card>
 
@@ -289,12 +329,20 @@ const FlowDetail: React.FC = () => {
             </Col>
             <Col xs={24} sm={8}>
               <Card size="small">
-                <Statistic title="Plant Sites" value={plantSites.length} prefix={<AimOutlined />} />
+                <Statistic
+                  title="Plant Sites"
+                  value={plantSites.length}
+                  prefix={<AimOutlined />}
+                />
               </Card>
             </Col>
             <Col xs={24} sm={8}>
               <Card size="small">
-                <Statistic title="Plants" value={flowPlants.length} prefix={<AimOutlined />} />
+                <Statistic
+                  title="Plants"
+                  value={flowPlants.length}
+                  prefix={<AimOutlined />}
+                />
               </Card>
             </Col>
           </Row>
@@ -306,7 +354,7 @@ const FlowDetail: React.FC = () => {
               dataSource={childFlows}
               pagination={false}
               size="small"
-              locale={{ emptyText: 'No child flows' }}
+              locale={{ emptyText: "No child flows" }}
             />
           </Card>
 
@@ -317,20 +365,11 @@ const FlowDetail: React.FC = () => {
               dataSource={plantSites}
               pagination={false}
               size="small"
-              locale={{ emptyText: 'No plant sites in this flow' }}
+              locale={{ emptyText: "No plant sites in this flow" }}
             />
           </Card>
 
-          <Card size="small" title={`Plants (${flowPlants.length})`}>
-            <Table
-              rowKey="ID"
-              columns={plantColumns}
-              dataSource={flowPlants}
-              pagination={false}
-              size="small"
-              locale={{ emptyText: 'No plants in this flow' }}
-            />
-          </Card>
+          <PlantListCard plants={flowPlants} />
 
           <Card size="small" title={`Notes (${flowNotes.length})`}>
             <Table
@@ -339,7 +378,7 @@ const FlowDetail: React.FC = () => {
               dataSource={flowNotes}
               pagination={false}
               size="small"
-              locale={{ emptyText: 'No notes' }}
+              locale={{ emptyText: "No notes" }}
             />
           </Card>
         </Space>

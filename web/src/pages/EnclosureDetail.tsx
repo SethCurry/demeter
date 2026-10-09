@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Row,
   Col,
@@ -12,7 +12,7 @@ import {
   Alert,
   Spin,
   Descriptions,
-} from 'antd';
+} from "antd";
 import {
   ReloadOutlined,
   RollbackOutlined,
@@ -21,10 +21,10 @@ import {
   AimOutlined,
   HomeOutlined,
   PlusOutlined,
-} from '@ant-design/icons';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAsync } from '../hooks/useAsync';
-import AddNoteModal from '../components/AddNoteModal';
+} from "@ant-design/icons";
+import { useParams, useNavigate } from "react-router-dom";
+import { useAsync } from "../hooks/useAsync";
+import AddNoteModal from "../components/AddNoteModal";
 import {
   api,
   nullInt,
@@ -34,11 +34,15 @@ import {
   type System,
   type Flow,
   type PlantSite,
-  type Plant,
+  type PlantWithFlow,
   type EnclosureAirTemperature,
   type EnclosureAirHumidity,
   type SimpleNote,
-} from '../api';
+} from "../api";
+import PlantListCard from "../components/PlantListCard";
+import SystemListCard from "../components/SystemListCard";
+import TemperatureChart from "../components/charts/TemperatureChart";
+import HumidityChart from "../components/charts/HumidityChart";
 
 const { Title, Text } = Typography;
 
@@ -54,23 +58,35 @@ const EnclosureDetail: React.FC = () => {
   const validId = Number.isFinite(enclosureId) && enclosureId > 0;
 
   const enc = useAsync<Enclosure>(
-    () => (validId ? api.getEnclosure(enclosureId) : Promise.reject(new Error('invalid id'))),
-    [enclosureId]
+    () =>
+      validId
+        ? api.getEnclosure(enclosureId)
+        : Promise.reject(new Error("invalid id")),
+    [enclosureId],
   );
   const sys = useAsync<System[]>(
     () => api.listSystems(validId ? enclosureId : undefined),
-    [enclosureId]
+    [enclosureId],
   );
   const flw = useAsync<Flow[]>(() => api.listFlows(), []);
   const sites = useAsync<PlantSite[]>(() => api.listPlantSites(), []);
-  const plants = useAsync<Plant[]>(() => api.enclosurePlants(enclosureId), []);
+  const plants = useAsync<PlantWithFlow[]>(
+    () => api.enclosurePlants(enclosureId),
+    [],
+  );
   const temps = useAsync<EnclosureAirTemperature[]>(
-    () => (validId ? api.listEnclosureAirTemperatures(enclosureId, READING_LIMIT) : Promise.resolve([])),
-    [enclosureId]
+    () =>
+      validId
+        ? api.listEnclosureAirTemperatures(enclosureId, READING_LIMIT)
+        : Promise.resolve([]),
+    [enclosureId],
   );
   const hums = useAsync<EnclosureAirHumidity[]>(
-    () => (validId ? api.listEnclosureAirHumidity(enclosureId, READING_LIMIT) : Promise.resolve([])),
-    [enclosureId]
+    () =>
+      validId
+        ? api.listEnclosureAirHumidity(enclosureId, READING_LIMIT)
+        : Promise.resolve([]),
+    [enclosureId],
   );
   const notes = useAsync<SimpleNote[]>(() => api.listEnclosureNotes(), []);
 
@@ -85,9 +101,23 @@ const EnclosureDetail: React.FC = () => {
   const enclosureNotes = allNotes;
 
   const loading =
-    enc.loading || sys.loading || flw.loading || sites.loading || plants.loading || temps.loading || hums.loading || notes.loading;
+    enc.loading ||
+    sys.loading ||
+    flw.loading ||
+    sites.loading ||
+    plants.loading ||
+    temps.loading ||
+    hums.loading ||
+    notes.loading;
   const error =
-    enc.error || sys.error || flw.error || sites.error || plants.error || temps.error || hums.error || notes.error;
+    enc.error ||
+    sys.error ||
+    flw.error ||
+    sites.error ||
+    plants.error ||
+    temps.error ||
+    hums.error ||
+    notes.error;
 
   const systemIds = new Set(systems.map((s) => s.ID));
   const enclosureFlows = flows.filter((f) => systemIds.has(f.SystemID));
@@ -112,9 +142,12 @@ const EnclosureDetail: React.FC = () => {
 
   if (!validId) {
     return (
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
         <Alert type="error" message="Invalid enclosure id" showIcon />
-        <Button icon={<RollbackOutlined />} onClick={() => navigate('/enclosures')}>
+        <Button
+          icon={<RollbackOutlined />}
+          onClick={() => navigate("/enclosures")}
+        >
           Back to enclosures
         </Button>
       </Space>
@@ -123,9 +156,17 @@ const EnclosureDetail: React.FC = () => {
 
   if (enc.error) {
     return (
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        <Alert type="error" message="Failed to load enclosure" description={enc.error} showIcon />
-        <Button icon={<RollbackOutlined />} onClick={() => navigate('/enclosures')}>
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Alert
+          type="error"
+          message="Failed to load enclosure"
+          description={enc.error}
+          showIcon
+        />
+        <Button
+          icon={<RollbackOutlined />}
+          onClick={() => navigate("/enclosures")}
+        >
           Back to enclosures
         </Button>
       </Space>
@@ -134,41 +175,34 @@ const EnclosureDetail: React.FC = () => {
 
   const latestTemp = temperatures[0];
   const latestHumidity = humidities[0];
-  const fmtTime = (t: string | null) => (t ? new Date(t).toLocaleString() : '—');
-
-  const systemColumns = [
-    { title: 'ID', dataIndex: 'ID', key: 'id', width: 60 },
-    {
-      title: 'Name',
-      dataIndex: 'Name',
-      key: 'name',
-      render: (name: string, r: System) => (
-        <a onClick={() => navigate(`/systems/${r.ID}`)}>{name}</a>
-      ),
-    },
-  ];
+  const fmtTime = (t: string | null) =>
+    t ? new Date(t).toLocaleString() : "—";
 
   const flowColumns = [
-    { title: 'ID', dataIndex: 'ID', key: 'id', width: 60 },
+    { title: "ID", dataIndex: "ID", key: "id", width: 60 },
     {
-      title: 'Name',
-      dataIndex: 'Name',
-      key: 'name',
+      title: "Name",
+      dataIndex: "Name",
+      key: "name",
       render: (name: string, r: Flow) => (
         <a onClick={() => navigate(`/flows/${r.ID}`)}>{name}</a>
       ),
     },
     {
-      title: 'System',
-      key: 'system',
+      title: "System",
+      key: "system",
       render: (_: unknown, r: Flow) => {
         const s = systemById.get(r.SystemID);
-        return s ? <a onClick={() => navigate(`/systems/${s.ID}`)}>{s.Name}</a> : '—';
+        return s ? (
+          <a onClick={() => navigate(`/systems/${s.ID}`)}>{s.Name}</a>
+        ) : (
+          "—"
+        );
       },
     },
     {
-      title: 'Parent Flow',
-      key: 'parent',
+      title: "Parent Flow",
+      key: "parent",
       render: (_: unknown, r: Flow) => {
         const pid = nullInt(r.ParentFlowID);
         if (pid == null) return <Tag>root</Tag>;
@@ -182,118 +216,125 @@ const EnclosureDetail: React.FC = () => {
     },
   ];
 
-  const plantColumns = [
-    { title: 'Plant ID', dataIndex: 'ID', key: 'id', width: 80 },
-    {
-      title: 'Site',
-      key: 'site',
-      render: (_: unknown, r: Plant) => {
-        const site = enclosureSites.find((s) => s.ID === r.PlantSiteID);
-        return site ? `#${site.ID} (${site.X},${site.Y},${site.Z})` : '—';
-      },
-    },
-    {
-      title: 'Flow',
-      key: 'flow',
-      render: (_: unknown, r: Plant) => {
-        const site = enclosureSites.find((s) => s.ID === r.PlantSiteID);
-        if (!site) return '—';
-        const f = flowById.get(site.FlowID);
-        return f ? <a onClick={() => navigate(`/flows/${f.ID}`)}>{f.Name}</a> : '—';
-      },
-    },
-    {
-      title: 'Planted',
-      key: 'planted',
-      render: (_: unknown, r: Plant) => {
-        const planted = nullTime(r.PlantedOn);
-        return planted ? new Date(planted).toLocaleDateString() : '—';
-      },
-    },
-  ];
-
   const tempColumns = [
-    { title: 'ID', dataIndex: 'ID', key: 'id', width: 60 },
+    { title: "ID", dataIndex: "ID", key: "id", width: 60 },
     {
-      title: 'Temperature (°C)',
-      dataIndex: 'TemperatureC',
-      key: 'temp',
+      title: "Temperature (°C)",
+      dataIndex: "TemperatureC",
+      key: "temp",
       render: (v: number) => <Tag color="orange">{v.toFixed(1)}</Tag>,
     },
     {
-      title: 'Timestamp',
-      key: 'ts',
-      render: (_: unknown, r: EnclosureAirTemperature) => fmtTime(nullTime(r.Timestamp)),
+      title: "Timestamp",
+      key: "ts",
+      render: (_: unknown, r: EnclosureAirTemperature) =>
+        fmtTime(nullTime(r.Timestamp)),
     },
   ];
 
   const humidityColumns = [
-    { title: 'ID', dataIndex: 'ID', key: 'id', width: 60 },
+    { title: "ID", dataIndex: "ID", key: "id", width: 60 },
     {
-      title: 'Humidity (% RH)',
-      dataIndex: 'HumidityRh',
-      key: 'rh',
+      title: "Humidity (% RH)",
+      dataIndex: "HumidityRh",
+      key: "rh",
       render: (v: number) => <Tag color="blue">{v.toFixed(1)}</Tag>,
     },
     {
-      title: 'Timestamp',
-      key: 'ts',
-      render: (_: unknown, r: EnclosureAirHumidity) => fmtTime(nullTime(r.Timestamp)),
+      title: "Timestamp",
+      key: "ts",
+      render: (_: unknown, r: EnclosureAirHumidity) =>
+        fmtTime(nullTime(r.Timestamp)),
     },
   ];
 
   const noteColumns = [
-    { title: 'ID', dataIndex: 'ID', key: 'id', width: 60 },
+    { title: "ID", dataIndex: "ID", key: "id", width: 60 },
     {
-      title: 'Timestamp',
-      key: 'ts',
+      title: "Timestamp",
+      key: "ts",
       render: (_: unknown, r: SimpleNote) => fmtTime(nullTime(r.Timestamp)),
     },
     {
-      title: 'Content',
-      key: 'content',
-      render: (_: unknown, r: SimpleNote) => nullString(r.Content) ?? '—',
+      title: "Content",
+      key: "content",
+      render: (_: unknown, r: SimpleNote) => nullString(r.Content) ?? "—",
     },
   ];
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
+      >
         <div>
           <Space align="center">
             <Button
               icon={<RollbackOutlined />}
-              onClick={() => navigate('/enclosures')}
+              onClick={() => navigate("/enclosures")}
               type="text"
             />
             <Title level={3} style={{ marginBottom: 4 }}>
-              <HomeOutlined /> {enclosure ? enclosure.Name : `Enclosure #${enclosureId}`}
+              <HomeOutlined />{" "}
+              {enclosure ? enclosure.Name : `Enclosure #${enclosureId}`}
             </Title>
           </Space>
-          <Text type="secondary">Details, metrics, and contents of this enclosure.</Text>
+          <Text type="secondary">
+            Details, metrics, and contents of this enclosure.
+          </Text>
         </div>
         <Space>
-        <Button icon={<ReloadOutlined />} onClick={reloadAll}>
-          Refresh
-        </Button>
-        <Button icon={<PlusOutlined />} onClick={() => setNoteModalOpen(true)}>
-          Add Note
-        </Button>
-      </Space>
-    </div>
+          <Button icon={<ReloadOutlined />} onClick={reloadAll}>
+            Refresh
+          </Button>
+          <Button
+            icon={<PlusOutlined />}
+            onClick={() => setNoteModalOpen(true)}
+          >
+            Add Note
+          </Button>
+        </Space>
+      </div>
 
-      {error && <Alert type="error" message="Failed to load data" description={error} showIcon />}
+      {error && (
+        <Alert
+          type="error"
+          message="Failed to load data"
+          description={error}
+          showIcon
+        />
+      )}
 
       <Spin spinning={loading}>
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space direction="vertical" size="large" style={{ width: "100%" }}>
           <Card size="small">
-            <Descriptions title="Enclosure" column={{ xs: 1, sm: 2, md: 3 }} size="small">
-              <Descriptions.Item label="ID">{enclosure?.ID ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Name">{enclosure?.Name ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Systems">{systems.length}</Descriptions.Item>
-              <Descriptions.Item label="Flows">{enclosureFlows.length}</Descriptions.Item>
-              <Descriptions.Item label="Plant Sites">{enclosureSites.length}</Descriptions.Item>
-              <Descriptions.Item label="Plants">{enclosurePlants.length}</Descriptions.Item>
+            <Descriptions
+              title="Enclosure"
+              column={{ xs: 1, sm: 2, md: 3 }}
+              size="small"
+            >
+              <Descriptions.Item label="ID">
+                {enclosure?.ID ?? "—"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Name">
+                {enclosure?.Name ?? "—"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Systems">
+                {systems.length}
+              </Descriptions.Item>
+              <Descriptions.Item label="Flows">
+                {enclosureFlows.length}
+              </Descriptions.Item>
+              <Descriptions.Item label="Plant Sites">
+                {enclosureSites.length}
+              </Descriptions.Item>
+              <Descriptions.Item label="Plants">
+                {enclosurePlants.length}
+              </Descriptions.Item>
             </Descriptions>
           </Card>
 
@@ -318,7 +359,11 @@ const EnclosureDetail: React.FC = () => {
             </Col>
             <Col xs={24} sm={12} md={8}>
               <Card size="small">
-                <Statistic title="Plants" value={enclosurePlants.length} prefix={<AimOutlined />} />
+                <Statistic
+                  title="Plants"
+                  value={enclosurePlants.length}
+                  prefix={<AimOutlined />}
+                />
               </Card>
             </Col>
             <Col xs={24} sm={12} md={12}>
@@ -338,6 +383,15 @@ const EnclosureDetail: React.FC = () => {
                     {fmtTime(nullTime(latestTemp.Timestamp))}
                   </Text>
                 )}
+                <TemperatureChart
+                  label="Temperature"
+                  data={temperatures.map((x) => {
+                    return {
+                      timestamp: x.Timestamp.Time,
+                      temperature: x.TemperatureC,
+                    };
+                  })}
+                />
               </Card>
             </Col>
             <Col xs={24} sm={12} md={12}>
@@ -357,91 +411,50 @@ const EnclosureDetail: React.FC = () => {
                     {fmtTime(nullTime(latestHumidity.Timestamp))}
                   </Text>
                 )}
+                <HumidityChart
+                  label="Humidity"
+                  data={humidities.map((x) => {
+                    return {
+                      timestamp: x.Timestamp.Time,
+                      humidity: x.HumidityRh,
+                    };
+                  })}
+                />
               </Card>
             </Col>
-                  </Row>
+          </Row>
 
-
-                  <Card size="small" title={`Notes (${enclosureNotes.length})`}>
-                    <Table
-                      rowKey="ID"
-                      columns={noteColumns}
-                      dataSource={enclosureNotes}
-                      pagination={false}
-                      size="small"
-                      locale={{ emptyText: 'No notes' }}
-                    />
-                  </Card>
-
-
-                  <Row gutter={[16, 16]}>
-                    <Col xs={24} lg={12}>
-          <Card size="small" title={`Systems (${systems.length})`}>
+          <Card size="small" title={`Notes (${enclosureNotes.length})`}>
             <Table
               rowKey="ID"
-              columns={systemColumns}
-              dataSource={systems}
+              columns={noteColumns}
+              dataSource={enclosureNotes}
               pagination={false}
               size="small"
-              locale={{ emptyText: 'No systems in this enclosure' }}
-            />
-                          </Card>
-                    </Col>
-
-          <Col xs={24} lg={12}>
-          <Card size="small" title={`Flows (${enclosureFlows.length})`}>
-            <Table
-              rowKey="ID"
-              columns={flowColumns}
-              dataSource={enclosureFlows}
-              pagination={false}
-              size="small"
-              locale={{ emptyText: 'No flows in this enclosure' }}
-            />
-                              </Card>
-          </Col>
-                  </Row>
-
-
-                  <Row gutter={[16, 16]}>
-                    <Col xs={24} lg={12}>
-                      <Card size="small" title="Recent Air Temperature Readings">
-                        <Table
-                          rowKey="ID"
-                          columns={tempColumns}
-                          dataSource={temperatures}
-                          pagination={false}
-                          size="small"
-                          locale={{ emptyText: 'No temperature readings' }}
-                        />
-                      </Card>
-                    </Col>
-                    <Col xs={24} lg={12}>
-                      <Card size="small" title="Recent Air Humidity Readings">
-                        <Table
-                          rowKey="ID"
-                          columns={humidityColumns}
-                          dataSource={humidities}
-                          pagination={false}
-                          size="small"
-                          locale={{ emptyText: 'No humidity readings' }}
-                        />
-                      </Card>
-                    </Col>
-                  </Row>
-
-
-          <Card size="small" title={`Plants (${enclosurePlants.length})`}>
-            <Table
-              rowKey="ID"
-              columns={plantColumns}
-              dataSource={enclosurePlants}
-              pagination={false}
-              size="small"
-              locale={{ emptyText: 'No plants in this enclosure' }}
+              locale={{ emptyText: "No notes" }}
             />
           </Card>
 
+          <Row gutter={[16, 16]}>
+            <Col xs={24} lg={12}>
+              <SystemListCard systems={systems} />
+            </Col>
+
+            <Col xs={24} lg={12}>
+              <Card size="small" title={`Flows (${enclosureFlows.length})`}>
+                <Table
+                  rowKey="ID"
+                  columns={flowColumns}
+                  dataSource={enclosureFlows}
+                  pagination={false}
+                  size="small"
+                  locale={{ emptyText: "No flows in this enclosure" }}
+                />
+              </Card>
+            </Col>
+          </Row>
+
+          <PlantListCard plants={enclosurePlants} />
         </Space>
       </Spin>
 

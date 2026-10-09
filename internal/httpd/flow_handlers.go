@@ -18,6 +18,19 @@ type flowRequest struct {
 	ParentFlowID *int64 `json:"parent_flow_id,omitempty"`
 }
 
+func listFlowPlantsHandler(db *models.Queries) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			return
+		}
+
+		plants, err := db.ListFlowPlants(ctx.Request.Context(), id)
+		ctx.JSON(http.StatusOK, plants)
+	}
+}
+
 func listFlowsHandler(db *models.Queries) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var flows []models.Flow
