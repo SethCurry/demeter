@@ -1,0 +1,4 @@
+- Add a Species column to PlantListCard with a link to the species
+    - Will need to change the queries for a bunch of endpoints
+- Calendar view?
+- Logging on incoming websocket events
