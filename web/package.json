@@ -2,7 +2,7 @@
   "name": "web",
   "version": "0.1.0",
   "private": true,
-  "proxy": "http://10.0.0.56:8249",
+  "proxy": "http://localhost:8249",
   "dependencies": {
     "@ant-design/icons": "^6.3.4",
     "@testing-library/dom": "^10.4.2",
