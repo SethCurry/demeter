@@ -86,7 +86,7 @@ const PlantDetail: React.FC = () => {
   const system = flow ? systemById.get(flow.SystemID) : undefined;
   const enclosure = system ? enclosureById.get(system.EnclosureID) : undefined;
 
-  const speciesId = plant ? nullInt(plant.SpeciesID) : null;
+  const speciesId = plant ? plant.SpeciesID : null;
   const species = speciesId != null ? speciesById.get(speciesId) : undefined;
   const speciesGenusId = species ? nullInt(species.PlantGenusID) : null;
   const speciesGenus = speciesGenusId != null ? genusById.get(speciesGenusId) : undefined;

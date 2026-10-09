@@ -54,7 +54,7 @@ export interface Plant {
   ID: number;
   PlantSiteID: number;
   PlantedOn: NullTime;
-  SpeciesID: NullInt64;
+  SpeciesID: number;
 }
 
 export interface PlantGenus {
@@ -81,6 +81,8 @@ export interface PlantWithFlow extends Plant {
   Z: {
     Int64: number;
   };
+  SpeciesName: string;
+  GenusName: string;
 }
 
 // "Simple" notes (enclosure/system/flow) share the same shape.
@@ -260,7 +262,7 @@ export const api = {
     }),
   deleteFlow: (id: number) => sendJson<void>("DELETE", `/api/flows/${id}`),
   flowPlants: (id: number) =>
-    getJson<PlantWithFlow[]>(`/api/flows/${id}/plants`),
+      getJson<PlantWithFlow[]>(withQuery(`/api/flows/${id}/plants`, {limit: 100})),
 
   // Plant sites
   listPlantSites: (flowId?: number) =>

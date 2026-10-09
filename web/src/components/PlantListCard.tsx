@@ -1,5 +1,5 @@
 import { Card, Table } from "antd";
-import { nullTime, type Plant, type PlantWithFlow } from "../api";
+import { nullString, nullTime, type Plant, type PlantWithFlow } from "../api";
 import { useNavigate } from "react-router-dom";
 
 interface PlantListCardProps {
@@ -23,8 +23,25 @@ export default function PlantListCard({ plants }: PlantListCardProps) {
       key: "flow",
       render: (_: unknown, r: PlantWithFlow) => {
         return (
-          <a href="none" onClick={() => navigate(`/flows/${r.FlowID}`)}>
+          <a href={`/flows/${r.FlowID}`} onClick={() => navigate(`/flows/${r.FlowID}`)}>
             {r.FlowName}
+          </a>
+        );
+      },
+    },
+    {
+      title: "Species",
+      key: "species",
+      render: (_: unknown, r: PlantWithFlow) => {
+          var speciesId = r.SpeciesID;
+          const speciesName = r.SpeciesName;
+          const genusName = r.GenusName;
+        return (
+          <a
+              href={`/plant-species/${speciesId}`}
+            onClick={() => navigate(`/plant-species/${speciesId}`)}
+          >
+            <em>{genusName}</em> {speciesName}
           </a>
         );
       },

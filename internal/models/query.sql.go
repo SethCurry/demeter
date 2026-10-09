@@ -802,10 +802,15 @@ SELECT plant.id            as id,
        plant_site.y        as y,
        plant_site.z        as z,
        flow.id             as flow_id,
-       flow.name           as flow_name
+       flow.name           as flow_name,
+       plant_species.id    as species_id,
+       plant_species.name  as species_name,
+       plant_genus.name    as genus_name
     FROM plant
-    LEFT JOIN plant_site ON plant_site.id = plant.plant_site_id
-    LEFT JOIN flow ON flow.id = plant_site.flow_id
+    INNER JOIN plant_site ON plant_site.id = plant.plant_site_id
+    INNER JOIN flow ON flow.id = plant_site.flow_id
+    INNER JOIN plant_species ON plant_species.id = plant.species_id
+    INNER JOIN plant_genus ON plant_genus.id = plant_species.plant_genus_id
     WHERE plant_site.flow_id IN (
         SELECT id FROM flow WHERE system_id IN (
             SELECT id FROM system WHERE enclosure_id = ?
@@ -817,11 +822,14 @@ type ListEnclosurePlantsRow struct {
 	ID          int64
 	PlantedOn   sql.NullTime
 	PlantSiteID int64
-	X           sql.NullInt64
-	Y           sql.NullInt64
-	Z           sql.NullInt64
-	FlowID      sql.NullInt64
-	FlowName    sql.NullString
+	X           int64
+	Y           int64
+	Z           int64
+	FlowID      int64
+	FlowName    string
+	SpeciesID   int64
+	SpeciesName string
+	GenusName   string
 }
 
 func (q *Queries) ListEnclosurePlants(ctx context.Context, enclosureID int64) ([]ListEnclosurePlantsRow, error) {
@@ -842,6 +850,9 @@ func (q *Queries) ListEnclosurePlants(ctx context.Context, enclosureID int64) ([
 			&i.Z,
 			&i.FlowID,
 			&i.FlowName,
+			&i.SpeciesID,
+			&i.SpeciesName,
+			&i.GenusName,
 		); err != nil {
 			return nil, err
 		}
@@ -918,10 +929,15 @@ SELECT plant.id            as id,
        plant_site.y        as y,
        plant_site.z        as z,
        flow.name as flow_name,
-       flow.id as flow_id
+       flow.id as flow_id,
+       plant_species.id    as species_id,
+       plant_species.name  as species_name,
+       plant_genus.name    as genus_name
     FROM plant
     LEFT JOIN plant_site ON plant_site.id = plant.plant_site_id
     INNER JOIN flow ON flow.id = plant_site.flow_id
+    INNER JOIN plant_species ON plant_species.id = plant.species_id
+    INNER JOIN plant_genus ON plant_genus.id = plant_species.plant_genus_id
     WHERE plant_site.flow_id = ?
 `
 
@@ -934,6 +950,9 @@ type ListFlowPlantsRow struct {
 	Z           sql.NullInt64
 	FlowName    string
 	FlowID      int64
+	SpeciesID   int64
+	SpeciesName string
+	GenusName   string
 }
 
 func (q *Queries) ListFlowPlants(ctx context.Context, flowID int64) ([]ListFlowPlantsRow, error) {
@@ -954,6 +973,9 @@ func (q *Queries) ListFlowPlants(ctx context.Context, flowID int64) ([]ListFlowP
 			&i.Z,
 			&i.FlowName,
 			&i.FlowID,
+			&i.SpeciesID,
+			&i.SpeciesName,
+			&i.GenusName,
 		); err != nil {
 			return nil, err
 		}

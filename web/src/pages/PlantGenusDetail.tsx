@@ -60,12 +60,10 @@ const PlantGenusDetail: React.FC = () => {
   const speciesById = new Map<number, PlantSpecies>(genusSpecies.map((s) => [s.ID, s]));
   const plantsBySpecies = new Map<number, number>();
   allPlants.forEach((p) => {
-    if (p.SpeciesID.Valid) {
-      const sid = p.SpeciesID.Int64;
+      const sid = p.SpeciesID;
       if (speciesById.has(sid)) {
         plantsBySpecies.set(sid, (plantsBySpecies.get(sid) ?? 0) + 1);
       }
-    }
   });
 
   const reloadAll = () => {

@@ -26,10 +26,8 @@ const PlantSpecies: React.FC = () => {
   const genusById = new Map(allGenera.map((g) => [g.ID, g]));
   const plantsBySpecies = new Map<number, number>();
   allPlants.forEach((p) => {
-    if (p.SpeciesID.Valid) {
-      const sid = p.SpeciesID.Int64;
+      const sid = p.SpeciesID;
       plantsBySpecies.set(sid, (plantsBySpecies.get(sid) ?? 0) + 1);
-    }
   });
 
   // Renders a species as "Genus species" when the genus is known, or the

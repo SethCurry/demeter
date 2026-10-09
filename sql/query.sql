@@ -26,10 +26,15 @@ SELECT plant.id            as id,
        plant_site.y        as y,
        plant_site.z        as z,
        flow.id             as flow_id,
-       flow.name           as flow_name
+       flow.name           as flow_name,
+       plant_species.id    as species_id,
+       plant_species.name  as species_name,
+       plant_genus.name    as genus_name
     FROM plant
-    LEFT JOIN plant_site ON plant_site.id = plant.plant_site_id
-    LEFT JOIN flow ON flow.id = plant_site.flow_id
+    INNER JOIN plant_site ON plant_site.id = plant.plant_site_id
+    INNER JOIN flow ON flow.id = plant_site.flow_id
+    INNER JOIN plant_species ON plant_species.id = plant.species_id
+    INNER JOIN plant_genus ON plant_genus.id = plant_species.plant_genus_id
     WHERE plant_site.flow_id IN (
         SELECT id FROM flow WHERE system_id IN (
             SELECT id FROM system WHERE enclosure_id = ?
@@ -79,10 +84,15 @@ SELECT plant.id            as id,
        plant_site.y        as y,
        plant_site.z        as z,
        flow.name as flow_name,
-       flow.id as flow_id
+       flow.id as flow_id,
+       plant_species.id    as species_id,
+       plant_species.name  as species_name,
+       plant_genus.name    as genus_name
     FROM plant
     LEFT JOIN plant_site ON plant_site.id = plant.plant_site_id
     INNER JOIN flow ON flow.id = plant_site.flow_id
+    INNER JOIN plant_species ON plant_species.id = plant.species_id
+    INNER JOIN plant_genus ON plant_genus.id = plant_species.plant_genus_id
     WHERE plant_site.flow_id = ?;
 
 -- name: CreateFlow :one

@@ -174,24 +174,6 @@ const FlowDetail: React.FC = () => {
     },
   ];
 
-  const siteColumns = [
-    { title: "ID", dataIndex: "ID", key: "id", width: 60 },
-    {
-      title: "Position",
-      key: "pos",
-      render: (_: unknown, r: PlantSite) => `(${r.X}, ${r.Y}, ${r.Z})`,
-    },
-    {
-      title: "Plants",
-      key: "plants",
-      render: (_: unknown, r: PlantSite) => (
-        <Tag color="green">
-          {allPlants.filter((p) => p.PlantSiteID === r.ID).length}
-        </Tag>
-      ),
-    },
-  ];
-
   const noteColumns = [
     { title: "ID", dataIndex: "ID", key: "id", width: 60 },
     {

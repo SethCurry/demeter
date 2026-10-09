@@ -106,7 +106,7 @@ const Plants: React.FC = () => {
       key: 'species',
       render: (_: unknown, r: PlantSite) => {
         const plant = plantBySite.get(r.ID);
-        const sid = plant ? nullInt(plant.SpeciesID) : null;
+        const sid = plant ? plant.SpeciesID : null;
         const species = sid != null ? speciesById.get(sid) : undefined;
         if (!species) return '—';
         return (
