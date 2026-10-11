@@ -1,6 +1,6 @@
 # Hugo
-title = "My Docs"
-description = "Congrats on setting up a new Doks project!"
+title = "Demeter"
+description = "ESP32-based hydroponics monitoring and automation"
 images = ["cover.png"]
 
 # mainSections
@@ -11,13 +11,13 @@ math = false # false (default) or true
 mathEngine = "KaTeX" # "KaTeX" (default) or "MathJax"
 
 [social]
-  twitter = "getdoks"
+  twitter = ""
 
 # Doks (@thulite/doks-core)
 [doks]
   # Color mode
-  colorMode = "auto" # auto (default), light or dark
-  colorModeToggler = true # true (default) or false (this setting is only relevant when colorMode = auto)
+  colorMode = "dark" # auto (default), light or dark
+  colorModeToggler = false # true (default) or false (this setting is only relevant when colorMode = auto)
 
   # Navbar
   navbarSticky = true # true (default) or false

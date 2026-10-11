@@ -16,7 +16,6 @@
       "g",
       "h1",
       "h2",
-      "h3",
       "h5",
       "head",
       "header",
@@ -52,7 +51,6 @@
       "DocSearch-Label",
       "active",
       "align-items-start",
-      "anchor",
       "bg-dots",
       "blog",
       "blog-header",
@@ -131,9 +129,7 @@
       "icon-tabler-dots",
       "icon-tabler-dots-vertical",
       "icon-tabler-menu",
-      "icon-tabler-moon",
       "icon-tabler-search",
-      "icon-tabler-sun",
       "icon-tabler-x",
       "icons-tabler-outline",
       "justify-content-between",
@@ -155,7 +151,6 @@
       "me-1",
       "me-2",
       "me-auto",
-      "me-lg-1",
       "me-lg-3",
       "message",
       "modal",
@@ -170,9 +165,7 @@
       "ms-2",
       "ms-3",
       "ms-auto",
-      "ms-lg-2",
       "mt-3",
-      "mt-lg-0",
       "mt-n3",
       "mx-2",
       "mx-auto",
@@ -247,12 +240,9 @@
       "wrap"
     ],
     "ids": [
-      "TableOfContents",
       "ai-dropdown",
-      "buttonColorMode",
       "copy-markdown",
       "doks-docs-nav",
-      "further-reading",
       "offcanvasNavMain",
       "offcanvasNavMainLabel",
       "offcanvasNavSection",
@@ -264,8 +254,7 @@
       "searchResults",
       "searchToggleDesktop",
       "searchToggleMobile",
-      "socialMenu",
-      "toc"
+      "socialMenu"
     ]
   }
 }
