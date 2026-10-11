@@ -29,16 +29,21 @@ menu "Demeter"
         The system ID to use for the DS18B20 sensor
   endmenu
 
-  menu "DHT (Air Temperature/Humidity)"
-    config DHT_GPIO
-      int "DHT GPIO Pin"
-      default 0
-      help
-        The GPIO pin to use for the DHT sensor
-    config DHT_ENCLOSURE_ID
-      int "DHT Enclosure ID"
-      default 0
-      help
-        The enclosure ID to use for the DHT sensor
+  menu "SHT (Air Temperature/Humidity)"
+    config SHT_CLOCK_GPIO
+        int "SHT Clock Pin"
+        default 0
+        help
+            The clock GPIO pin for an SHT41/2/etc
+    config SHT_DATA_GPIO
+        int "SHT Data Pin"
+        default 0
+        help
+            The data GPIO pin for an SHT41/2/etc
+    config SHT_ENCLOSURE_ID
+        int "SHT Enclosure ID"
+        default 0
+        help
+            The ID of the enclosure this SHT device measures for.
   endmenu
 endmenu

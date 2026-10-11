@@ -16,3 +16,4 @@ dependencies:
   #   public: true
   espressif/esp_websocket_client: ^1.8.0
   espressif/ds18b20: ^0.4.0
+  esp-idf-lib/sht4x: ^1.0.7

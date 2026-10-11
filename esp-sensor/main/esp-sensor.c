@@ -25,6 +25,10 @@
 #include "dht-sensor.h"
 #endif
 
+#if CONFIG_SHT_DATA_GPIO != 0
+#include "sht4x-sensor.h"
+#endif
+
 #define SENSOR_PERIOD_MS 15000
 #define MAX_JOBS 4
 
@@ -68,6 +72,12 @@ static void dht_job(void *arg)
 }
 #endif
 
+#if CONFIG_SHT_DATA_GPIO != 0
+static void sht_job(void *arg) {
+  send_sht_data(s_ws, CONFIG_SHT_ENCLOSURE_ID, arg);
+}
+#endif
+
 static void register_jobs(void)
 {
 #if CONFIG_DS18B20_GPIO != 0
@@ -79,6 +89,11 @@ static void register_jobs(void)
 #if CONFIG_DHT_GPIO != 0
     setDHTgpio(CONFIG_DHT_GPIO);
     job_add(dht_job, NULL, pdMS_TO_TICKS(SENSOR_PERIOD_MS));
+#endif
+#if CONFIG_SHT_DATA_GPIO != 0
+    sht4x_t sht4x_dev =  get_shtx_dev();
+
+    job_add(sht_job, &sht4x_dev, pdMS_TO_TICKS(SENSOR_PERIOD_MS));
 #endif
 }
 
