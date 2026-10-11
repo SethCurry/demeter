@@ -26,10 +26,9 @@ void send_sht_data(esp_websocket_client_handle_t client, int target_id,
 }
 
 sht4x_t get_shtx_dev() {
-    ESP_ERROR_CHECK(i2cdev_init());
     memset(&dev, 0, sizeof(sht4x_t));
 
-    ESP_ERROR_CHECK(sht4x_init_desc(&dev, 0, CONFIG_SHT_DATA_GPIO, CONFIG_SHT_CLOCK_GPIO));
+    ESP_ERROR_CHECK(sht4x_init_desc(&dev, 0, CONFIG_I2C_DATA_GPIO, CONFIG_I2C_CLOCK_GPIO));
     ESP_ERROR_CHECK(sht4x_init(&dev));
 
     return dev;

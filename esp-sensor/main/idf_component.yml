@@ -17,3 +17,4 @@ dependencies:
   espressif/esp_websocket_client: ^1.8.0
   espressif/ds18b20: ^0.4.0
   esp-idf-lib/sht4x: ^1.0.7
+  esp-idf-lib/bh1750: ^1.1.7

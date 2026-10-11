@@ -29,21 +29,30 @@ menu "Demeter"
         The system ID to use for the DS18B20 sensor
   endmenu
 
-  menu "SHT (Air Temperature/Humidity)"
-    config SHT_CLOCK_GPIO
-        int "SHT Clock Pin"
+  menu "I2C"
+    config I2C_CLOCK_GPIO
+        int "I2C Clock Pin"
         default 0
         help
             The clock GPIO pin for an SHT41/2/etc
-    config SHT_DATA_GPIO
-        int "SHT Data Pin"
+    config I2C_DATA_GPIO
+        int "I2C Data Pin"
         default 0
         help
             The data GPIO pin for an SHT41/2/etc
+  endmenu
+  menu "SHT 4x"
     config SHT_ENCLOSURE_ID
         int "SHT Enclosure ID"
         default 0
         help
             The ID of the enclosure this SHT device measures for.
+  endmenu
+  menu "BH1750"
+    config BH_PLANT_SITE_ID
+        int "BH1750 Plant Site ID"
+        default 0
+        help
+            The ID of the plant site this BH1750 measures for.
   endmenu
 endmenu

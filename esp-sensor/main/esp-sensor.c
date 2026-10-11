@@ -17,6 +17,10 @@
 #include "demeterws.h"
 #include "nvs_flash.h"
 
+#if CONFIG_I2C_DATA_GPIO != 0
+#include "i2cdev.h"
+#endif
+
 #if CONFIG_DS18B20_GPIO != 0
 #include "ds18b20-sensor.h"
 #endif
@@ -25,11 +29,15 @@
 #include "dht-sensor.h"
 #endif
 
-#if CONFIG_SHT_DATA_GPIO != 0
+#if CONFIG_SHT_ENCLOSURE_ID != 0
 #include "sht4x-sensor.h"
 #endif
 
-#define SENSOR_PERIOD_MS 15000
+#if CONFIG_BH_PLANT_SITE_ID != 0
+#include "bh1750-sensor.h"
+#endif
+
+#define SENSOR_PERIOD_MS 5000
 #define MAX_JOBS 4
 
 typedef void (*job_fn_t)(void *arg);
@@ -72,14 +80,22 @@ static void dht_job(void *arg)
 }
 #endif
 
-#if CONFIG_SHT_DATA_GPIO != 0
+#if CONFIG_SHT_ENCLOSURE_ID != 0
 static void sht_job(void *arg) {
   send_sht_data(s_ws, CONFIG_SHT_ENCLOSURE_ID, arg);
 }
 #endif
 
-static void register_jobs(void)
-{
+#if CONFIG_BH_PLANT_SITE_ID != 0
+static void bh_job(void *arg) {
+    send_bh1750_data(s_ws, CONFIG_BH_PLANT_SITE_ID);
+}
+#endif
+
+static void register_jobs(void) {
+#if CONFIG_I2C_DATA_GPIO != 0
+    ESP_ERROR_CHECK(i2cdev_init());
+#endif
 #if CONFIG_DS18B20_GPIO != 0
     onewire_bus_handle_t bus = get_bus_handle();
     ds18b20_device_handle_t device = get_ds18b20_handle(bus);
@@ -90,10 +106,15 @@ static void register_jobs(void)
     setDHTgpio(CONFIG_DHT_GPIO);
     job_add(dht_job, NULL, pdMS_TO_TICKS(SENSOR_PERIOD_MS));
 #endif
-#if CONFIG_SHT_DATA_GPIO != 0
+#if CONFIG_SHT_ENCLOSURE_ID != 0
     sht4x_t sht4x_dev =  get_shtx_dev();
 
     job_add(sht_job, &sht4x_dev, pdMS_TO_TICKS(SENSOR_PERIOD_MS));
+#endif
+#if CONFIG_BH_PLANT_SITE_ID != 0
+    get_bh1750_dev();
+
+    job_add(bh_job, NULL, pdMS_TO_TICKS(SENSOR_PERIOD_MS));
 #endif
 }
 
