@@ -1,4 +1,9 @@
 menu "Demeter"
+  config SENSOR_INTERVAL_SECONDS
+    int "Sensors Measurement Interval (Seconds)
+    default 15
+    help
+      The number of seconds between measurements on sensors.
   config WIFI_SSID
     string "WiFi Network Name"
     default ""

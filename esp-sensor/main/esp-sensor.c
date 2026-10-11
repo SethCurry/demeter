@@ -25,10 +25,6 @@
 #include "ds18b20-sensor.h"
 #endif
 
-#if CONFIG_DHT_GPIO != 0
-#include "dht-sensor.h"
-#endif
-
 #if CONFIG_SHT_ENCLOSURE_ID != 0
 #include "sht4x-sensor.h"
 #endif
@@ -37,7 +33,7 @@
 #include "bh1750-sensor.h"
 #endif
 
-#define SENSOR_PERIOD_MS 5000
+#define SENSOR_PERIOD_MS CONFIG_SENSOR_INTERVAL_SECONDS*1000
 #define MAX_JOBS 4
 
 typedef void (*job_fn_t)(void *arg);
@@ -72,14 +68,6 @@ static void ds18b20_job(void *arg)
 }
 #endif
 
-#if CONFIG_DHT_GPIO != 0
-static void dht_job(void *arg)
-{
-    (void)arg;
-    send_dht_data(s_ws, CONFIG_DHT_ENCLOSURE_ID);
-}
-#endif
-
 #if CONFIG_SHT_ENCLOSURE_ID != 0
 static void sht_job(void *arg) {
   send_sht_data(s_ws, CONFIG_SHT_ENCLOSURE_ID, arg);
@@ -101,10 +89,6 @@ static void register_jobs(void) {
     ds18b20_device_handle_t device = get_ds18b20_handle(bus);
     dsb_handle_t dsb = { bus, device };
     job_add(ds18b20_job, &dsb, pdMS_TO_TICKS(SENSOR_PERIOD_MS));
-#endif
-#if CONFIG_DHT_GPIO != 0
-    setDHTgpio(CONFIG_DHT_GPIO);
-    job_add(dht_job, NULL, pdMS_TO_TICKS(SENSOR_PERIOD_MS));
 #endif
 #if CONFIG_SHT_ENCLOSURE_ID != 0
     sht4x_t sht4x_dev =  get_shtx_dev();
