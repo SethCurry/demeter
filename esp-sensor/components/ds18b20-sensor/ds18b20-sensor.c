@@ -6,10 +6,12 @@
 #include "demeterws.h"
 #include "ds18b20-sensor.h"
 
-const char *TAG = "ds18b20-sensor";
+static const char *TAG = "ds18b20-sensor";
+static onewire_bus_handle_t obus;
+static ds18b20_device_handle_t use_ds18b20;
 
 onewire_bus_handle_t get_bus_handle() {
-    onewire_bus_handle_t bus = NULL;
+    obus = NULL;
     onewire_bus_config_t bus_config = {
         .bus_gpio_num = CONFIG_DS18B20_GPIO,
     };
@@ -17,9 +19,9 @@ onewire_bus_handle_t get_bus_handle() {
     onewire_bus_rmt_config_t rmt_config = {
             .max_rx_bytes = 10, // 1byte ROM command + 8byte ROM number + 1byte device command
     };
-    ESP_ERROR_CHECK(onewire_new_bus_rmt(&bus_config, &rmt_config, &bus));
+    ESP_ERROR_CHECK(onewire_new_bus_rmt(&bus_config, &rmt_config, &obus));
 
-    return bus;
+    return obus;
 }
 
 ds18b20_device_handle_t get_ds18b20_handle(onewire_bus_handle_t bus) {
@@ -30,7 +32,7 @@ ds18b20_device_handle_t get_ds18b20_handle(onewire_bus_handle_t bus) {
     esp_err_t search_result = ESP_OK;
 
     // create 1-wire device iterator, which is used for device search
-    ESP_ERROR_CHECK(onewire_new_device_iter(bus, &iter));
+    ESP_ERROR_CHECK(onewire_new_device_iter(obus, &iter));
     ESP_LOGI(TAG, "Device iterator created, start searching...");
     do {
         search_result = onewire_device_iter_get_next(iter, &next_onewire_device);
@@ -50,17 +52,16 @@ ds18b20_device_handle_t get_ds18b20_handle(onewire_bus_handle_t bus) {
     ESP_ERROR_CHECK(onewire_del_device_iter(iter));
     ESP_LOGI(TAG, "Searching done, %d DS18B20 device(s) found", ds18b20_device_num);
 
-    ds18b20_trigger_temperature_conversion_for_all(bus);
 
+    use_ds18b20 = ds18b20s[0];
 
-    ds18b20_device_handle_t ds18b20_handle = ds18b20s[0];
-
-    return ds18b20_handle;
+    return use_ds18b20;
 }
 
 void send_dsb_data(esp_websocket_client_handle_t client, int target_id, dsb_handle_t *dsb) {
     float temperature;
-    int get_result = ds18b20_get_temperature(dsb->ds18b20, &temperature);
+    ds18b20_trigger_temperature_conversion_for_all(obus);
+    int get_result = ds18b20_get_temperature(use_ds18b20, &temperature);
 
     if (get_result != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get temperature: %d", get_result);

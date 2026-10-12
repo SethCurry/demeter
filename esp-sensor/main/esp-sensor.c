@@ -34,7 +34,7 @@
 #endif
 
 #define SENSOR_PERIOD_MS CONFIG_SENSOR_INTERVAL_SECONDS*1000
-#define MAX_JOBS 4
+#define MAX_JOBS 10
 
 typedef void (*job_fn_t)(void *arg);
 
@@ -116,29 +116,14 @@ void app_main(void)
 
     for (;;) {
         TickType_t now = xTaskGetTickCount();
-        TickType_t sleep = portMAX_DELAY;
+        TickType_t sleep = pdMS_TO_TICKS(SENSOR_PERIOD_MS);
 
         for (int i = 0; i < s_job_count; i++) {
             job_t *job = &s_jobs[i];
 
-            if ((int32_t)(now - job->next_run) >= 0) {
-                job->fn(job->arg);
-                now = xTaskGetTickCount();               // jobs block for seconds
-                job->next_run += job->period;            // due-date based: no drift
-                if ((int32_t)(now - job->next_run) >= 0) {
-                    job->next_run = now + job->period;   // missed >= 1 period: resync
-                }
-            }
-
-            int32_t until = (int32_t)(job->next_run - now);
-            if (until > 0 && (TickType_t)until < sleep) {
-                sleep = until;
-            }
+            job->fn(job->arg);
         }
 
-        if (sleep == portMAX_DELAY && s_job_count > 0) {
-            sleep = 1;  // a deadline passed while we ran; go around again
-        }
         vTaskDelay(sleep);
     }
 }

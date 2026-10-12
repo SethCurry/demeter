@@ -14,6 +14,7 @@ void send_sensor_data(esp_websocket_client_handle_t client, int target_type, int
     while (i < 1) {
         if (esp_websocket_client_is_connected(client)) {
                 esp_websocket_client_send_text(client, payload, strlen(payload), 0);
+                i += 1;
         }
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }

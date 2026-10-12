@@ -1,5 +1,5 @@
-#ifndef SHT_SENSOR_H_
-#define SHT_SENSOR_H_
+#ifndef BH1750_SENSOR_H_
+#define BH1750_SENSOR_H_
 
 #include "esp_websocket_client.h"
 #include "bh1750.h"

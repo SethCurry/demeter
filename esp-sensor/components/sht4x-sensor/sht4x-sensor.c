@@ -6,7 +6,7 @@
 #include <esp_err.h>
 #include "esp_log.h"
 
-const char *TAG = "sht4x-sensor";
+static const char *TAG = "sht4x-sensor";
 
 static sht4x_t dev;
 
