@@ -9,13 +9,17 @@
 
 #include <stdint.h>
 
+#include "esp_err.h"
+#include "esp_websocket_client.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "esp_log.h"
 
 #include "sdkconfig.h"
 #include "wifi.h"
 #include "demeterws.h"
 #include "nvs_flash.h"
+#include "timelapse-sensor.h"
 
 #if CONFIG_I2C_DATA_GPIO != 0
 #include "i2cdev.h"
@@ -48,6 +52,7 @@ typedef struct {
 static esp_websocket_client_handle_t s_ws;
 static job_t s_jobs[MAX_JOBS];
 static int s_job_count;
+static const char *MAIN_TAG = "demeter";
 
 static void job_add(job_fn_t fn, void *arg, TickType_t period)
 {
@@ -102,6 +107,15 @@ static void register_jobs(void) {
 #endif
 }
 
+void timelapse_task(void *pvParameter) {
+    ESP_ERROR_CHECK(init_camera());
+    maybe_init_autofocus();
+    for (;;) {
+        send_demeter_timelapse(s_ws);
+        vTaskDelay(pdMS_TO_TICKS(15000));
+    }
+};
+
 void app_main(void)
 {
     esp_err_t ret = nvs_flash_init();
@@ -113,10 +127,18 @@ void app_main(void)
     start_wifi();
     s_ws = connect_websocket();
     register_jobs();
+    ESP_ERROR_CHECK(init_camera());
+    maybe_init_autofocus();
+
+    int counter = 0;
 
     for (;;) {
-        TickType_t now = xTaskGetTickCount();
         TickType_t sleep = pdMS_TO_TICKS(SENSOR_PERIOD_MS);
+
+        if (counter % (4*5) == 0) {
+            send_demeter_timelapse(s_ws);
+            counter += 1;
+        }
 
         for (int i = 0; i < s_job_count; i++) {
             job_t *job = &s_jobs[i];
@@ -124,6 +146,7 @@ void app_main(void)
             job->fn(job->arg);
         }
 
+        counter += 1;
         vTaskDelay(sleep);
     }
 }

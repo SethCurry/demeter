@@ -1,5 +1,6 @@
 #include "esp_websocket_client.h"
 #include "esp_log.h"
+#include "freertos/idf_additions.h"
 #include <stdio.h>
 
 static const char *TAG = "demeterws";
@@ -65,6 +66,7 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
 esp_websocket_client_handle_t connect_websocket() {
   const esp_websocket_client_config_t ws_cfg = {
       .uri = CONFIG_WEBSOCKET_URL,
+      .task_core_id = tskNO_AFFINITY,
   };
 
   esp_websocket_client_handle_t client = esp_websocket_client_init(&ws_cfg);
