@@ -3,8 +3,11 @@ package sensor
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/SethCurry/demeter/internal/models"
 	"github.com/SethCurry/demeter/pkg/demeter"
@@ -13,11 +16,12 @@ import (
 )
 
 func NewSensorReceiver(db *models.Queries) *SensorReceiver {
-	return &SensorReceiver{db: db}
+	return &SensorReceiver{db: db, timelapseDir: "/srv/demeter/timelapse"}
 }
 
 type SensorReceiver struct {
 	db *models.Queries
+	timelapseDir string
 }
 
 func (r *SensorReceiver) Initialize(initMsg demeter.InitializeMessage) {
@@ -114,6 +118,27 @@ func (r *SensorReceiver) PlantSiteLux(plantSiteLuxMsg demeter.PlantSiteLuxMessag
 	}
 }
 
+func (r *SensorReceiver) Timelapse(msg demeter.TimelapseImage) {
+	deviceDir := filepath.Join(r.timelapseDir, msg.MAC)
+
+	if _, err := os.Stat(deviceDir); err != nil && os.IsNotExist(err) {
+		log.Info().Str("path", deviceDir).Msg("creating directory for timelapses")
+		os.MkdirAll(deviceDir, 0755)
+	}
+
+	currentTime := time.Now()
+	imagePath := filepath.Join(deviceDir, currentTime.Format(time.RFC3339) + ".jpeg")
+
+	fd, err := os.Create(imagePath)
+	if err != nil {
+		return
+	}
+	defer fd.Close()
+
+	fd.Write(msg.Image)
+	log.Info().Str("path", imagePath).Msg("saved timelapse image")
+}
+
 func NewConn(ws *websocket.Conn, receiver *SensorReceiver) *Conn {
 	return &Conn{ws: ws, receiver: receiver}
 }
@@ -125,9 +150,19 @@ type Conn struct {
 
 func (c *Conn) Run() error {
 	for {
-		_, messageData, err := c.ws.ReadMessage()
+		wsMessageType, messageData, err := c.ws.ReadMessage()
 		if err != nil {
 			return err
+		}
+
+		if wsMessageType == websocket.BinaryMessage {
+			macAddr := messageData[:12]
+			imageData := messageData[12:]
+			c.receiver.Timelapse(demeter.TimelapseImage{
+				MAC: string(macAddr),
+				Image: imageData,
+			})
+			return nil
 		}
 
 		asMsg := string(messageData)

@@ -63,3 +63,8 @@ type PlantSiteLuxMessage struct {
 	PlantSiteID int `json:"plant_site_id"`
 	Lux         int `json:"lux"`
 }
+
+type TimelapseImage struct {
+	MAC string
+	Image []byte
+}
