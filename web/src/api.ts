@@ -99,6 +99,11 @@ export interface PlantSiteNote {
   Content: NullString;
 }
 
+export interface PlantSiteLux {
+  Timestamp: NullTime;
+  Lux: number;
+}
+
 export interface PlantNote {
   ID: number;
   PlanID: NullInt64;
@@ -262,7 +267,9 @@ export const api = {
     }),
   deleteFlow: (id: number) => sendJson<void>("DELETE", `/api/flows/${id}`),
   flowPlants: (id: number) =>
-      getJson<PlantWithFlow[]>(withQuery(`/api/flows/${id}/plants`, {limit: 100})),
+    getJson<PlantWithFlow[]>(
+      withQuery(`/api/flows/${id}/plants`, { limit: 100 }),
+    ),
 
   // Plant sites
   listPlantSites: (flowId?: number) =>
@@ -290,6 +297,8 @@ export const api = {
     }),
   deletePlantSite: (id: number) =>
     sendJson<void>("DELETE", `/api/plant-sites/${id}`),
+  listPlantSiteLux: (id: number) =>
+    getJson<PlantSiteLux[]>(`/api/plant-sites/${id}/lux`),
 
   // Plants
   listPlants: (params?: { plantSiteId?: number; speciesId?: number }) =>
@@ -321,8 +330,7 @@ export const api = {
 
   // Plant genera
   listPlantGenera: () => getJson<PlantGenus[]>("/api/plant-genera"),
-  getPlantGenus: (id: number) =>
-    getJson<PlantGenus>(`/api/plant-genera/${id}`),
+  getPlantGenus: (id: number) => getJson<PlantGenus>(`/api/plant-genera/${id}`),
   createPlantGenus: (name: string) =>
     sendJson<PlantGenus>("POST", "/api/plant-genera", { name }),
   updatePlantGenus: (id: number, name: string) =>

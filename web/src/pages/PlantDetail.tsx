@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Row,
   Col,
@@ -12,7 +12,7 @@ import {
   Alert,
   Spin,
   Descriptions,
-} from 'antd';
+} from "antd";
 import {
   ReloadOutlined,
   RollbackOutlined,
@@ -20,10 +20,10 @@ import {
   ExperimentOutlined,
   DeploymentUnitOutlined,
   HomeOutlined,
-} from '@ant-design/icons';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAsync } from '../hooks/useAsync';
-import PlantSites3D from '../components/PlantSites3D';
+} from "@ant-design/icons";
+import { useParams, useNavigate } from "react-router-dom";
+import { useAsync } from "../hooks/useAsync";
+import PlantSites3D from "../components/PlantSites3D";
 import {
   api,
   nullTime,
@@ -36,11 +36,14 @@ import {
   type PlantNote,
   type PlantSpecies,
   type PlantGenus,
-} from '../api';
+  PlantSiteLux,
+} from "../api";
+import LuxChart from "../components/charts/LuxChart";
 
 const { Title, Text } = Typography;
 
 const PlantDetail: React.FC = () => {
+  const [luxes, setLuxes] = useState<PlantSiteLux[]>([]);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const plantId = Number(id);
@@ -48,8 +51,15 @@ const PlantDetail: React.FC = () => {
   const validId = Number.isFinite(plantId) && plantId > 0;
 
   const pl = useAsync<Plant>(
-    () => (validId ? api.getPlant(plantId) : Promise.reject(new Error('invalid id'))),
-    [plantId]
+    () =>
+      validId
+        ? api.getPlant(plantId).then(async (resp) => {
+            const luxes = await api.listPlantSiteLux(resp.PlantSiteID);
+            setLuxes(luxes);
+            return resp;
+          })
+        : Promise.reject(new Error("invalid id")),
+    [plantId],
   );
   const sites = useAsync<PlantSite[]>(() => api.listPlantSites(), []);
   const flw = useAsync<Flow[]>(() => api.listFlows(), []);
@@ -71,9 +81,25 @@ const PlantDetail: React.FC = () => {
   const allGenera = gen.data ?? [];
 
   const loading =
-    pl.loading || sites.loading || flw.loading || sys.loading || enc.loading || plants.loading || notes.loading || spec.loading || gen.loading;
+    pl.loading ||
+    sites.loading ||
+    flw.loading ||
+    sys.loading ||
+    enc.loading ||
+    plants.loading ||
+    notes.loading ||
+    spec.loading ||
+    gen.loading;
   const error =
-    pl.error || sites.error || flw.error || sys.error || enc.error || plants.error || notes.error || spec.error || gen.error;
+    pl.error ||
+    sites.error ||
+    flw.error ||
+    sys.error ||
+    enc.error ||
+    plants.error ||
+    notes.error ||
+    spec.error ||
+    gen.error;
 
   const flowById = new Map(flows.map((f) => [f.ID, f]));
   const systemById = new Map(systems.map((s) => [s.ID, s]));
@@ -81,7 +107,9 @@ const PlantDetail: React.FC = () => {
   const speciesById = new Map(allSpecies.map((s) => [s.ID, s]));
   const genusById = new Map(allGenera.map((g) => [g.ID, g]));
 
-  const site = plant ? plantSites.find((s) => s.ID === plant.PlantSiteID) : undefined;
+  const site = plant
+    ? plantSites.find((s) => s.ID === plant.PlantSiteID)
+    : undefined;
   const flow = site ? flowById.get(site.FlowID) : undefined;
   const system = flow ? systemById.get(flow.SystemID) : undefined;
   const enclosure = system ? enclosureById.get(system.EnclosureID) : undefined;
@@ -89,15 +117,20 @@ const PlantDetail: React.FC = () => {
   const speciesId = plant ? plant.SpeciesID : null;
   const species = speciesId != null ? speciesById.get(speciesId) : undefined;
   const speciesGenusId = species ? nullInt(species.PlantGenusID) : null;
-  const speciesGenus = speciesGenusId != null ? genusById.get(speciesGenusId) : undefined;
+  const speciesGenus =
+    speciesGenusId != null ? genusById.get(speciesGenusId) : undefined;
 
   // All flows in the same system, so the 3D diagram shows the whole system
   // context with this plant's site highlighted.
-  const systemFlows = flow ? flows.filter((f) => f.SystemID === flow.SystemID) : [];
+  const systemFlows = flow
+    ? flows.filter((f) => f.SystemID === flow.SystemID)
+    : [];
   const systemFlowIds = new Set(systemFlows.map((f) => f.ID));
   const systemSites = plantSites.filter((s) => systemFlowIds.has(s.FlowID));
   const systemSiteIds = new Set(systemSites.map((s) => s.ID));
-  const systemPlants = allPlants.filter((p) => systemSiteIds.has(p.PlantSiteID));
+  const systemPlants = allPlants.filter((p) =>
+    systemSiteIds.has(p.PlantSiteID),
+  );
 
   // Plant notes are keyed by `PlanID` in the backend; the flat list exposed
   // by the API cannot be attributed precisely to a single plant, so we show
@@ -118,9 +151,9 @@ const PlantDetail: React.FC = () => {
 
   if (!validId) {
     return (
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
         <Alert type="error" message="Invalid plant id" showIcon />
-        <Button icon={<RollbackOutlined />} onClick={() => navigate('/plants')}>
+        <Button icon={<RollbackOutlined />} onClick={() => navigate("/plants")}>
           Back to plants
         </Button>
       </Space>
@@ -129,65 +162,93 @@ const PlantDetail: React.FC = () => {
 
   if (pl.error) {
     return (
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        <Alert type="error" message="Failed to load plant" description={pl.error} showIcon />
-        <Button icon={<RollbackOutlined />} onClick={() => navigate('/plants')}>
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Alert
+          type="error"
+          message="Failed to load plant"
+          description={pl.error}
+          showIcon
+        />
+        <Button icon={<RollbackOutlined />} onClick={() => navigate("/plants")}>
           Back to plants
         </Button>
       </Space>
     );
   }
 
-  const fmtTime = (t: string | null) => (t ? new Date(t).toLocaleString() : '—');
+  const fmtTime = (t: string | null) =>
+    t ? new Date(t).toLocaleString() : "—";
   const planted = plant ? nullTime(plant.PlantedOn) : null;
 
   const noteColumns = [
-    { title: 'ID', dataIndex: 'ID', key: 'id', width: 60 },
+    { title: "ID", dataIndex: "ID", key: "id", width: 60 },
     {
-      title: 'Timestamp',
-      key: 'ts',
+      title: "Timestamp",
+      key: "ts",
       render: (_: unknown, r: PlantNote) => fmtTime(nullTime(r.Timestamp)),
     },
     {
-      title: 'Content',
-      key: 'content',
+      title: "Content",
+      key: "content",
       render: (_: unknown, r: PlantNote) => {
         const c = r.Content && r.Content.Valid ? r.Content.String : null;
-        return c ?? '—';
+        return c ?? "—";
       },
     },
   ];
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
+      >
         <div>
           <Space align="center">
             <Button
               icon={<RollbackOutlined />}
-              onClick={() => navigate('/plants')}
+              onClick={() => navigate("/plants")}
               type="text"
             />
             <Title level={3} style={{ marginBottom: 4 }}>
-              <AimOutlined /> {plant ? `Plant #${plant.ID}` : `Plant #${plantId}`}
+              <AimOutlined />{" "}
+              {plant ? `Plant #${plant.ID}` : `Plant #${plantId}`}
             </Title>
           </Space>
-          <Text type="secondary">Details and location of this plant within its system.</Text>
+          <Text type="secondary">
+            Details and location of this plant within its system.
+          </Text>
         </div>
         <Button icon={<ReloadOutlined />} onClick={reloadAll}>
           Refresh
         </Button>
       </div>
 
-      {error && <Alert type="error" message="Failed to load data" description={error} showIcon />}
+      {error && (
+        <Alert
+          type="error"
+          message="Failed to load data"
+          description={error}
+          showIcon
+        />
+      )}
 
       <Spin spinning={loading}>
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space direction="vertical" size="large" style={{ width: "100%" }}>
           <Card size="small">
-            <Descriptions title="Plant" column={{ xs: 1, sm: 2, md: 3 }} size="small">
-              <Descriptions.Item label="ID">{plant?.ID ?? '—'}</Descriptions.Item>
+            <Descriptions
+              title="Plant"
+              column={{ xs: 1, sm: 2, md: 3 }}
+              size="small"
+            >
+              <Descriptions.Item label="ID">
+                {plant?.ID ?? "—"}
+              </Descriptions.Item>
               <Descriptions.Item label="Planted On">
-                {planted ? new Date(planted).toLocaleDateString() : '—'}
+                {planted ? new Date(planted).toLocaleDateString() : "—"}
               </Descriptions.Item>
               <Descriptions.Item label="Species">
                 {species ? (
@@ -196,10 +257,12 @@ const PlantDetail: React.FC = () => {
                     style={{ padding: 0 }}
                     onClick={() => navigate(`/plant-species/${species.ID}`)}
                   >
-                    {speciesGenus ? `${speciesGenus.Name} ${species.Name}` : species.Name}
+                    {speciesGenus
+                      ? `${speciesGenus.Name} ${species.Name}`
+                      : species.Name}
                   </Button>
                 ) : (
-                  '—'
+                  "—"
                 )}
               </Descriptions.Item>
               <Descriptions.Item label="Plant Site">
@@ -207,12 +270,12 @@ const PlantDetail: React.FC = () => {
                   <Button
                     type="link"
                     style={{ padding: 0 }}
-                    onClick={() => navigate('/plants')}
+                    onClick={() => navigate("/plants")}
                   >
                     #{site.ID} ({site.X}, {site.Y}, {site.Z})
                   </Button>
                 ) : (
-                  '—'
+                  "—"
                 )}
               </Descriptions.Item>
               <Descriptions.Item label="Flow">
@@ -225,7 +288,7 @@ const PlantDetail: React.FC = () => {
                     <DeploymentUnitOutlined /> {flow.Name}
                   </Button>
                 ) : (
-                  '—'
+                  "—"
                 )}
               </Descriptions.Item>
               <Descriptions.Item label="System">
@@ -238,7 +301,7 @@ const PlantDetail: React.FC = () => {
                     <ExperimentOutlined /> {system.Name}
                   </Button>
                 ) : (
-                  '—'
+                  "—"
                 )}
               </Descriptions.Item>
               <Descriptions.Item label="Enclosure">
@@ -251,10 +314,22 @@ const PlantDetail: React.FC = () => {
                     <HomeOutlined /> {enclosure.Name}
                   </Button>
                 ) : (
-                  '—'
+                  "—"
                 )}
               </Descriptions.Item>
             </Descriptions>
+          </Card>
+
+          <Card size="small">
+            <LuxChart
+              label="Lux"
+              data={luxes.map((x) => {
+                return {
+                  timestamp: x.Timestamp.Time,
+                  lux: x.Lux,
+                };
+              })}
+            />
           </Card>
 
           <Row gutter={[16, 16]}>
@@ -262,7 +337,7 @@ const PlantDetail: React.FC = () => {
               <Card size="small">
                 <Statistic
                   title="Site Position"
-                  value={site ? `(${site.X}, ${site.Y}, ${site.Z})` : '—'}
+                  value={site ? `(${site.X}, ${site.Y}, ${site.Z})` : "—"}
                   prefix={<AimOutlined />}
                 />
               </Card>
@@ -303,7 +378,7 @@ const PlantDetail: React.FC = () => {
               dataSource={plantNotes}
               pagination={false}
               size="small"
-              locale={{ emptyText: 'No notes' }}
+              locale={{ emptyText: "No notes" }}
             />
           </Card>
         </Space>

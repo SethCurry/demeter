@@ -372,3 +372,6 @@ VALUES (?, ?);
 -- name: CreatePlantSiteLux :exec
 INSERT INTO plant_site_lux (plant_site_id, lux)
 VALUES (?, ?);
+
+-- name: ListPlantSiteLux :many
+SELECT * FROM plant_site_lux WHERE plant_site_id = ? ORDER BY timestamp DESC LIMIT 100;

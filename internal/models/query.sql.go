@@ -1145,6 +1145,38 @@ func (q *Queries) ListPlantNotesByPlant(ctx context.Context, planID sql.NullInt6
 	return items, nil
 }
 
+const listPlantSiteLux = `-- name: ListPlantSiteLux :many
+SELECT id, plant_site_id, timestamp, lux FROM plant_site_lux WHERE plant_site_id = ? ORDER BY timestamp DESC LIMIT 100
+`
+
+func (q *Queries) ListPlantSiteLux(ctx context.Context, plantSiteID int64) ([]PlantSiteLux, error) {
+	rows, err := q.db.QueryContext(ctx, listPlantSiteLux, plantSiteID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlantSiteLux
+	for rows.Next() {
+		var i PlantSiteLux
+		if err := rows.Scan(
+			&i.ID,
+			&i.PlantSiteID,
+			&i.Timestamp,
+			&i.Lux,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPlantSiteNotes = `-- name: ListPlantSiteNotes :many
 SELECT id, plant_site_id, timestamp, content FROM plant_site_note
 `

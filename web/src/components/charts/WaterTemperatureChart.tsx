@@ -30,11 +30,11 @@ export default function WaterTemperatureChart({ data, label }: BaseChartProps) {
   );
 
   const chartData = {
-    labels: data.map((x) => x.timestamp),
+    labels: data.map((x) => x.timestamp).reverse(),
     datasets: [
       {
         label: label,
-        data: data.map((x) => x.temperature),
+        data: data.map((x) => x.temperature).reverse(),
         fill: false,
       },
     ],

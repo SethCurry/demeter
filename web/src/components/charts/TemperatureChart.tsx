@@ -32,11 +32,11 @@ export default function TemperatureChart({ data, label }: BaseChartProps) {
   console.log(data);
 
   const chartData = {
-    labels: data.map((x) => x.timestamp),
+    labels: data.map((x) => x.timestamp).reverse(),
     datasets: [
       {
         label: label,
-        data: data.map((x) => x.temperature),
+        data: data.map((x) => x.temperature).reverse(),
         fill: false,
       },
     ],

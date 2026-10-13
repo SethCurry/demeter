@@ -31,11 +31,11 @@ export default function HumidityChart({ data, label }: BaseChartProps) {
   console.log(data);
 
   const chartData = {
-    labels: data.map((x) => x.timestamp),
+    labels: data.map((x) => x.timestamp).reverse(),
     datasets: [
       {
         label: label,
-        data: data.map((x) => x.humidity),
+        data: data.map((x) => x.humidity).reverse(),
         fill: true,
       },
     ],

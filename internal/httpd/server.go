@@ -128,6 +128,7 @@ func Run(addr string, db *models.Queries) error {
 		plantSites.GET("/:id", getPlantSiteHandler(db))
 		plantSites.PUT("/:id", updatePlantSiteHandler(db))
 		plantSites.DELETE("/:id", deletePlantSiteHandler(db))
+		plantSites.GET("/:id/lux", listPlantSiteLuxHandler(db))
 	}
 
 	plants := r.Group("/api/plants")

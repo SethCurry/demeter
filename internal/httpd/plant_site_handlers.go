@@ -271,3 +271,20 @@ func deletePlantSiteNoteHandler(db *models.Queries) gin.HandlerFunc {
 		ctx.Status(http.StatusNoContent)
 	}
 }
+
+
+func listPlantSiteLuxHandler(db *models.Queries) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			return
+		}
+		readings, err := db.ListPlantSiteLux(ctx.Request.Context(), id)
+		if err != nil {
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		ctx.JSON(http.StatusOK, readings)
+	}
+}
