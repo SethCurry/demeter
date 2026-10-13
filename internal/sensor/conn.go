@@ -25,10 +25,11 @@ type SensorReceiver struct {
 }
 
 func (r *SensorReceiver) Initialize(initMsg demeter.InitializeMessage) {
-
+	log.Info().Msg("received initialize message")
 }
 
 func (r *SensorReceiver) EnclosureAirTemperature(airTempMsg demeter.EnclosureAirTemperatureMessage) {
+	log.Info().Int("enclosure_id", airTempMsg.EnclosureID).Float64("temperature_c", airTempMsg.Temperature).Msg("received enclosure air temperature message")
 	err := r.db.CreateEnclosureAirTemperature(context.Background(), models.CreateEnclosureAirTemperatureParams{
 		EnclosureID:  int64(airTempMsg.EnclosureID),
 		TemperatureC: airTempMsg.Temperature,
@@ -39,6 +40,7 @@ func (r *SensorReceiver) EnclosureAirTemperature(airTempMsg demeter.EnclosureAir
 }
 
 func (r *SensorReceiver) EnclosureHumidity(humidityMsg demeter.EnclosureHumidityMessage) {
+	log.Info().Int("enclosure_id", humidityMsg.EnclosureID).Float64("humidity_rh", humidityMsg.Humidity).Msg("received enclosure humidity message")
 	err := r.db.CreateEnclosureAirHumidity(context.Background(), models.CreateEnclosureAirHumidityParams{
 		EnclosureID: int64(humidityMsg.EnclosureID),
 		HumidityRh:  humidityMsg.Humidity,
@@ -49,6 +51,7 @@ func (r *SensorReceiver) EnclosureHumidity(humidityMsg demeter.EnclosureHumidity
 }
 
 func (r *SensorReceiver) SystemPH(phMsg demeter.SystemPHMessage) {
+	log.Info().Int("system_id", phMsg.SystemID).Float64("ph", phMsg.PH).Msg("received system pH message")
 	err := r.db.CreateSystemPH(context.Background(), models.CreateSystemPHParams{
 		SystemID: int64(phMsg.SystemID),
 		Ph:       phMsg.PH,
@@ -59,6 +62,7 @@ func (r *SensorReceiver) SystemPH(phMsg demeter.SystemPHMessage) {
 }
 
 func (r *SensorReceiver) SystemEC(ecMsg demeter.SystemECMessage) {
+	log.Info().Int("system_id", ecMsg.SystemID).Float64("ec", ecMsg.EC).Msg("received system EC message")
 	err := r.db.CreateSystemEC(context.Background(), models.CreateSystemECParams{
 		SystemID: int64(ecMsg.SystemID),
 		Ec:       ecMsg.EC,
@@ -69,6 +73,7 @@ func (r *SensorReceiver) SystemEC(ecMsg demeter.SystemECMessage) {
 }
 
 func (r *SensorReceiver) SystemOxygen(oxygenMsg demeter.SystemOxygenMessage) {
+	log.Info().Int("system_id", oxygenMsg.SystemID).Float64("oxygen", oxygenMsg.Oxygen).Msg("received system oxygen message")
 	err := r.db.CreateSystemOxygen(context.Background(), models.CreateSystemOxygenParams{
 		SystemID: int64(oxygenMsg.SystemID),
 		Oxygen:   oxygenMsg.Oxygen,
@@ -79,6 +84,7 @@ func (r *SensorReceiver) SystemOxygen(oxygenMsg demeter.SystemOxygenMessage) {
 }
 
 func (r *SensorReceiver) SystemWaterTemperature(waterTempMsg demeter.SystemWaterTemperatureMessage) {
+	log.Info().Int("system_id", waterTempMsg.SystemID).Float64("temperature_c", waterTempMsg.Temperature).Msg("received system water temperature message")
 	err := r.db.CreateSystemWaterTemperature(context.Background(), models.CreateSystemWaterTemperatureParams{
 		SystemID:          int64(waterTempMsg.SystemID),
 		WaterTemperatureC: waterTempMsg.Temperature,
@@ -89,6 +95,7 @@ func (r *SensorReceiver) SystemWaterTemperature(waterTempMsg demeter.SystemWater
 }
 
 func (r *SensorReceiver) SystemWaterProximity(waterProximityMsg demeter.SystemWaterProximityMessage) {
+	log.Info().Int("system_id", waterProximityMsg.SystemID).Float64("depth_m", waterProximityMsg.Depth).Msg("received system water proximity message")
 	err := r.db.CreateSystemWaterProximity(context.Background(), models.CreateSystemWaterProximityParams{
 		SystemID:   int64(waterProximityMsg.SystemID),
 		ProximityM: waterProximityMsg.Depth,
@@ -99,6 +106,7 @@ func (r *SensorReceiver) SystemWaterProximity(waterProximityMsg demeter.SystemWa
 }
 
 func (r *SensorReceiver) FlowRate(flowRateMsg demeter.FlowRateMessage) {
+	log.Info().Int("flow_id", flowRateMsg.FlowID).Float64("rate_mps", flowRateMsg.Rate).Msg("received flow rate message")
 	err := r.db.CreateFlowRate(context.Background(), models.CreateFlowRateParams{
 		FlowID:  int64(flowRateMsg.FlowID),
 		RateMps: flowRateMsg.Rate,
@@ -109,6 +117,7 @@ func (r *SensorReceiver) FlowRate(flowRateMsg demeter.FlowRateMessage) {
 }
 
 func (r *SensorReceiver) PlantSiteLux(plantSiteLuxMsg demeter.PlantSiteLuxMessage) {
+	log.Info().Int("plant_site_id", plantSiteLuxMsg.PlantSiteID).Int("lux", plantSiteLuxMsg.Lux).Msg("received plant site lux message")
 	err := r.db.CreatePlantSiteLux(context.Background(), models.CreatePlantSiteLuxParams{
 		PlantSiteID: int64(plantSiteLuxMsg.PlantSiteID),
 		Lux:         int64(plantSiteLuxMsg.Lux),
@@ -119,6 +128,7 @@ func (r *SensorReceiver) PlantSiteLux(plantSiteLuxMsg demeter.PlantSiteLuxMessag
 }
 
 func (r *SensorReceiver) Timelapse(msg demeter.TimelapseImage) {
+	log.Info().Str("mac", msg.MAC).Int("image_bytes", len(msg.Image)).Msg("received timelapse image message")
 	deviceDir := filepath.Join(r.timelapseDir, msg.MAC)
 
 	if _, err := os.Stat(deviceDir); err != nil && os.IsNotExist(err) {
@@ -154,6 +164,8 @@ func (c *Conn) Run() error {
 		if err != nil {
 			return err
 		}
+
+		log.Info().Int("message_type", wsMessageType).Msg("received websocket message")
 
 		if wsMessageType == websocket.BinaryMessage {
 			macAddr := messageData[:12]

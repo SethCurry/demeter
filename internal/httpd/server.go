@@ -66,10 +66,7 @@ func isUniqueViolation(err error) bool {
 
 func createSensorConnectionHandler(db *models.Queries) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-
-		w, r := ctx.Writer, ctx.Request
-
-		c, err := upgrader.Upgrade(w, r, nil)
+		c, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 		if err != nil {
 			ctx.AbortWithError(500, err)
 			return
@@ -78,9 +75,11 @@ func createSensorConnectionHandler(db *models.Queries) gin.HandlerFunc {
 		receiver := sensor.NewSensorReceiver(db)
 		conn := sensor.NewConn(c, receiver)
 
-		conn.Run()
-
-		ctx.JSON(200, map[string]string{"message": "connected"})
+		err = conn.Run()
+		if err != nil {
+			ctx.AbortWithError(500, err)
+			return
+		}
 	}
 }
 
