@@ -43,6 +43,7 @@ import PlantListCard from "../components/PlantListCard";
 import SystemListCard from "../components/SystemListCard";
 import TemperatureChart from "../components/charts/TemperatureChart";
 import HumidityChart from "../components/charts/HumidityChart";
+import MetricChart from "../components/charts/MetricChart";
 
 const { Title, Text } = Typography;
 
@@ -74,20 +75,6 @@ const EnclosureDetail: React.FC = () => {
     () => api.enclosurePlants(enclosureId),
     [],
   );
-  const temps = useAsync<EnclosureAirTemperature[]>(
-    () =>
-      validId
-        ? api.listEnclosureAirTemperatures(enclosureId, READING_LIMIT)
-        : Promise.resolve([]),
-    [enclosureId],
-  );
-  const hums = useAsync<EnclosureAirHumidity[]>(
-    () =>
-      validId
-        ? api.listEnclosureAirHumidity(enclosureId, READING_LIMIT)
-        : Promise.resolve([]),
-    [enclosureId],
-  );
   const notes = useAsync<SimpleNote[]>(() => api.listEnclosureNotes(), []);
 
   const enclosure = enc.data;
@@ -95,8 +82,6 @@ const EnclosureDetail: React.FC = () => {
   const flows = flw.data ?? [];
   const plantSites = sites.data ?? [];
   const allPlants = plants.data ?? [];
-  const temperatures = temps.data ?? [];
-  const humidities = hums.data ?? [];
   const allNotes = notes.data ?? [];
   const enclosureNotes = allNotes;
 
@@ -106,8 +91,6 @@ const EnclosureDetail: React.FC = () => {
     flw.loading ||
     sites.loading ||
     plants.loading ||
-    temps.loading ||
-    hums.loading ||
     notes.loading;
   const error =
     enc.error ||
@@ -115,8 +98,6 @@ const EnclosureDetail: React.FC = () => {
     flw.error ||
     sites.error ||
     plants.error ||
-    temps.error ||
-    hums.error ||
     notes.error;
 
   const systemIds = new Set(systems.map((s) => s.ID));
@@ -135,8 +116,6 @@ const EnclosureDetail: React.FC = () => {
     flw.reload();
     sites.reload();
     plants.reload();
-    temps.reload();
-    hums.reload();
     notes.reload();
   };
 
@@ -173,8 +152,6 @@ const EnclosureDetail: React.FC = () => {
     );
   }
 
-  const latestTemp = temperatures[0];
-  const latestHumidity = humidities[0];
   const fmtTime = (t: string | null) =>
     t ? new Date(t).toLocaleString() : "—";
 
@@ -184,20 +161,14 @@ const EnclosureDetail: React.FC = () => {
       title: "Name",
       dataIndex: "Name",
       key: "name",
-      render: (name: string, r: Flow) => (
-        <a href={`/flows/${r.ID}`}>{name}</a>
-      ),
+      render: (name: string, r: Flow) => <a href={`/flows/${r.ID}`}>{name}</a>,
     },
     {
       title: "System",
       key: "system",
       render: (_: unknown, r: Flow) => {
         const s = systemById.get(r.SystemID);
-        return s ? (
-          <a href={`/systems/${s.ID}`}>{s.Name}</a>
-        ) : (
-          "—"
-        );
+        return s ? <a href={`/systems/${s.ID}`}>{s.Name}</a> : "—";
       },
     },
     {
@@ -231,7 +202,7 @@ const EnclosureDetail: React.FC = () => {
   ];
 
   return (
-    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+    <Space orientation="vertical" size="large" style={{ width: "100%" }}>
       <div
         style={{
           display: "flex",
@@ -271,14 +242,14 @@ const EnclosureDetail: React.FC = () => {
       {error && (
         <Alert
           type="error"
-          message="Failed to load data"
+          title="Failed to load data"
           description={error}
           showIcon
         />
       )}
 
       <Spin spinning={loading}>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <Card size="small">
             <Descriptions
               title="Enclosure"
@@ -335,58 +306,28 @@ const EnclosureDetail: React.FC = () => {
               </Card>
             </Col>
             <Col xs={24} sm={12} md={12}>
-              <Card size="small" title="Latest Air Temperature">
-                {latestTemp ? (
-                  <Statistic
-                    value={latestTemp.TemperatureC}
-                    precision={1}
-                    suffix="°C"
-                  />
-                ) : (
-                  <Text type="secondary">No readings yet</Text>
-                )}
-                {latestTemp && (
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    <br />
-                    {fmtTime(nullTime(latestTemp.Timestamp))}
-                  </Text>
-                )}
-                <TemperatureChart
+              <Card size="small" title="Air Temperature">
+                <MetricChart
                   label="Temperature"
-                  data={temperatures.map((x) => {
-                    return {
-                      timestamp: x.Timestamp.Time,
-                      temperature: x.TemperatureC,
-                    };
-                  })}
+                  minY={0}
+                  maxY={50}
+                  tickCallback={(value, a, b) => value + " C"}
+                  borderColor="rgba(249, 65, 68, 0.5)"
+                  backgroundColor="rgba(249, 132, 74, 0.5)"
+                  loader={() => api.metricEnclosureAirTemperature(enclosureId)}
                 />
               </Card>
             </Col>
             <Col xs={24} sm={12} md={12}>
-              <Card size="small" title="Latest Air Humidity">
-                {latestHumidity ? (
-                  <Statistic
-                    value={latestHumidity.HumidityRh}
-                    precision={1}
-                    suffix="% RH"
-                  />
-                ) : (
-                  <Text type="secondary">No readings yet</Text>
-                )}
-                {latestHumidity && (
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    <br />
-                    {fmtTime(nullTime(latestHumidity.Timestamp))}
-                  </Text>
-                )}
-                <HumidityChart
+              <Card size="small" title="Air Humidity">
+                <MetricChart
                   label="Humidity"
-                  data={humidities.map((x) => {
-                    return {
-                      timestamp: x.Timestamp.Time,
-                      humidity: x.HumidityRh,
-                    };
-                  })}
+                  minY={0}
+                  maxY={100}
+                  borderColor="rgba(0, 150, 199, 0.5)"
+                  backgroundColor="rgba(72, 202, 228, 0.5)"
+                  tickCallback={(value, a, b) => value + " %"}
+                  loader={() => api.metricEnclosureAirHumidity(enclosureId)}
                 />
               </Card>
             </Col>

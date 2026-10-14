@@ -313,6 +313,18 @@ WHERE enclosure_id = ?
 ORDER BY timestamp DESC
 LIMIT ?;
 
+-- name: MetricsEnclosureAirTemperatures :many
+SELECT * FROM enclosure_air_temperature
+WHERE enclosure_id = ? AND timestamp > ? AND timestamp < ?
+ORDER BY timestamp DESC;
+
+
+-- name: MetricsEnclosureAirHumidities :many
+SELECT * FROM enclosure_air_humidity
+WHERE enclosure_id = ? AND timestamp > ? AND timestamp < ?
+ORDER BY timestamp DESC;
+
+
 -- name: CreateEnclosureAirTemperature :exec
 INSERT INTO enclosure_air_temperature (enclosure_id, temperature_c)
 VALUES (?, ?);

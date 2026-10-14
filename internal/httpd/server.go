@@ -92,6 +92,8 @@ func Run(addr string, db *models.Queries) error {
 		enclosures.GET("", listEnclosuresHandler(db))
 		enclosures.POST("", createEnclosureHandler(db))
 		enclosures.GET("/:id", getEnclosureHandler(db))
+		enclosures.GET("/:id/metrics/air-temperature", metricEnclosureAirTemperature(db))
+		enclosures.GET("/:id/metrics/air-humidity", metricEnclosureHumidity(db))
 		enclosures.GET("/:id/air-temperature", listEnclosureAirTemperaturesHandler(db))
 		enclosures.GET("/:id/air-humidity", listEnclosureAirHumidityHandler(db))
 		enclosures.GET("/:id/plants", listEnclosurePlantsHandler(db))

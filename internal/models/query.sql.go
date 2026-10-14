@@ -1658,6 +1658,86 @@ func (q *Queries) ListSystemsByEnclosure(ctx context.Context, enclosureID int64)
 	return items, nil
 }
 
+const metricsEnclosureAirHumidities = `-- name: MetricsEnclosureAirHumidities :many
+SELECT id, timestamp, enclosure_id, humidity_rh FROM enclosure_air_humidity
+WHERE enclosure_id = ? AND timestamp > ? AND timestamp < ?
+ORDER BY timestamp DESC
+`
+
+type MetricsEnclosureAirHumiditiesParams struct {
+	EnclosureID int64
+	Timestamp   sql.NullTime
+	Timestamp_2 sql.NullTime
+}
+
+func (q *Queries) MetricsEnclosureAirHumidities(ctx context.Context, arg MetricsEnclosureAirHumiditiesParams) ([]EnclosureAirHumidity, error) {
+	rows, err := q.db.QueryContext(ctx, metricsEnclosureAirHumidities, arg.EnclosureID, arg.Timestamp, arg.Timestamp_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []EnclosureAirHumidity
+	for rows.Next() {
+		var i EnclosureAirHumidity
+		if err := rows.Scan(
+			&i.ID,
+			&i.Timestamp,
+			&i.EnclosureID,
+			&i.HumidityRh,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const metricsEnclosureAirTemperatures = `-- name: MetricsEnclosureAirTemperatures :many
+SELECT id, timestamp, enclosure_id, temperature_c FROM enclosure_air_temperature
+WHERE enclosure_id = ? AND timestamp > ? AND timestamp < ?
+ORDER BY timestamp DESC
+`
+
+type MetricsEnclosureAirTemperaturesParams struct {
+	EnclosureID int64
+	Timestamp   sql.NullTime
+	Timestamp_2 sql.NullTime
+}
+
+func (q *Queries) MetricsEnclosureAirTemperatures(ctx context.Context, arg MetricsEnclosureAirTemperaturesParams) ([]EnclosureAirTemperature, error) {
+	rows, err := q.db.QueryContext(ctx, metricsEnclosureAirTemperatures, arg.EnclosureID, arg.Timestamp, arg.Timestamp_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []EnclosureAirTemperature
+	for rows.Next() {
+		var i EnclosureAirTemperature
+		if err := rows.Scan(
+			&i.ID,
+			&i.Timestamp,
+			&i.EnclosureID,
+			&i.TemperatureC,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateEnclosure = `-- name: UpdateEnclosure :one
 UPDATE enclosure
 SET name = ?

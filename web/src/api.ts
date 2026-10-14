@@ -9,6 +9,11 @@
 
 const API_BASE = (process.env.REACT_APP_API_BASE as string | undefined) ?? "";
 
+export interface MetricPoint {
+  Timestamp: string;
+  Value: number;
+}
+
 export interface NullInt64 {
   Int64: number;
   Valid: boolean;
@@ -207,6 +212,32 @@ export const api = {
   listEnclosureAirHumidity: (id: number, limit?: number) =>
     getJson<EnclosureAirHumidity[]>(
       withQuery(`/api/enclosures/${id}/air-humidity`, { limit }),
+    ),
+  // Aggregated metric series. "limit" sets the number of intervals across
+  // the window (server default 24); "start" and "end" are RFC3339
+  // timestamps (server defaults: last 24 hours through now). Each point is
+  // the average of raw readings within its interval.
+  metricEnclosureAirTemperature: (
+    id: number,
+    params?: { limit?: number; start?: string; end?: string },
+  ) =>
+    getJson<MetricPoint[]>(
+      withQuery(`/api/enclosures/${id}/metrics/air-temperature`, {
+        limit: params?.limit,
+        start: params?.start,
+        end: params?.end,
+      }),
+    ),
+  metricEnclosureAirHumidity: (
+    id: number,
+    params?: { limit?: number; start?: string; end?: string },
+  ) =>
+    getJson<MetricPoint[]>(
+      withQuery(`/api/enclosures/${id}/metrics/air-humidity`, {
+        limit: params?.limit,
+        start: params?.start,
+        end: params?.end,
+      }),
     ),
   createEnclosure: (name: string) =>
     sendJson<Enclosure>("POST", "/api/enclosures", { name }),
