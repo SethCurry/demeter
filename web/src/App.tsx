@@ -11,6 +11,8 @@ import {
   CameraOutlined,
   ToolOutlined,
   SettingOutlined,
+  AppstoreOutlined,
+  SlidersOutlined,
 } from '@ant-design/icons';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
@@ -27,22 +29,31 @@ import PlantGenusDetail from './pages/PlantGenusDetail';
 import PlantSpecies from './pages/PlantSpecies';
 import PlantSpeciesDetail from './pages/PlantSpeciesDetail';
 import Photos from './pages/Photos';
-import Maintenance from './pages/Maintenance';
-import Settings from './pages/Settings';
 
 const { Header, Sider, Content } = Layout;
 
 const menuItems = [
-  { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard' },
+    { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard' },
+    {
+        key: "hydroponics",
+        label: "Hydroponics",
+        icon: <SlidersOutlined />,
+        children: [
   { key: '/enclosures', icon: <HomeOutlined />, label: 'Enclosures' },
   { key: '/systems', icon: <ExperimentOutlined />, label: 'Systems' },
   { key: '/flows', icon: <DeploymentUnitOutlined />, label: 'Flows' },
-  { key: '/plants', icon: <AimOutlined />, label: 'Plants' },
-  { key: '/plant-genera', icon: <ClusterOutlined />, label: 'Genera' },
-  { key: '/plant-species', icon: <TagsOutlined />, label: 'Species' },
+            { key: '/plants', icon: <AimOutlined />, label: 'Plants' },
+        ]},
+  {
+    key: 'taxonomy',
+    icon: <AppstoreOutlined />,
+    label: 'Taxonomy',
+    children: [
+      { key: '/plant-genera', icon: <ClusterOutlined />, label: 'Genera' },
+      { key: '/plant-species', icon: <TagsOutlined />, label: 'Species' },
+    ],
+  },
   { key: '/photos', icon: <CameraOutlined />, label: 'Photos' },
-  { key: '/maintenance', icon: <ToolOutlined />, label: 'Maintenance' },
-  { key: '/settings', icon: <SettingOutlined />, label: 'Settings' },
 ];
 
 const App: React.FC = () => {
@@ -77,6 +88,7 @@ const App: React.FC = () => {
           theme="dark"
           mode="inline"
           selectedKeys={[location.pathname]}
+          defaultOpenKeys={['taxonomy', 'hydroponics']}
           items={menuItems}
           onClick={({ key }) => navigate(key)}
         />
@@ -113,8 +125,6 @@ const App: React.FC = () => {
               <Route path="/plant-species" element={<PlantSpecies />} />
               <Route path="/plant-species/:id" element={<PlantSpeciesDetail />} />
               <Route path="/photos" element={<Photos />} />
-              <Route path="/maintenance" element={<Maintenance />} />
-              <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </div>
