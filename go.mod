@@ -3,8 +3,10 @@ module github.com/SethCurry/demeter
 go 1.27.1
 
 require (
+	github.com/disintegration/imaging v1.6.2
 	github.com/gin-gonic/gin v1.12.0
 	github.com/gorilla/websocket v1.5.3
+	github.com/mattn/go-mjpeg v0.0.3
 	github.com/rs/zerolog v1.35.1
 	github.com/urfave/cli/v3 v3.14.0
 	modernc.org/sqlite v1.60.1
@@ -41,6 +43,7 @@ require (
 	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
 	golang.org/x/arch v0.22.0 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8 // indirect
 	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.34.0 // indirect

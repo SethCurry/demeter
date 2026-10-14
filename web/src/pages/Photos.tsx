@@ -1,65 +1,66 @@
-import React from 'react';
-import { Row, Col, Card, Typography, Empty, Button, Tag, Space } from 'antd';
-import { CameraOutlined, PlayCircleOutlined } from '@ant-design/icons';
+import React from "react";
+import { Row, Col, Card, Typography, Empty, Button, Tag, Space } from "antd";
+import { CameraOutlined, PlayCircleOutlined } from "@ant-design/icons";
+import { useAsync } from "../hooks/useAsync";
+import { api, Timelapse } from "../api";
+import { useNavigate } from "react-router-dom";
 
 const { Title, Text, Paragraph } = Typography;
 
-interface PhotoSet {
-  id: number;
-  name: string;
-  target: 'Whole system' | 'Roots';
-  interval: string;
-  latest: string;
-  frames: number;
-}
-
-const photoSets: PhotoSet[] = [
-  { id: 1, name: 'Greenhouse A - Wide', target: 'Whole system', interval: '10 min', latest: '2025-10-03 15:50', frames: 432 },
-  { id: 2, name: 'Lettuce NFT - Roots', target: 'Roots', interval: '30 min', latest: '2025-10-03 15:30', frames: 144 },
-  { id: 3, name: 'Tomato DWC - Roots', target: 'Roots', interval: '30 min', latest: '2025-10-03 15:30', frames: 140 },
-];
-
 const Photos: React.FC = () => {
+  const navigate = useNavigate();
+  const timelapseResults = useAsync<Timelapse[]>(
+    () => api.listTimelapses(),
+    [],
+  );
+  const timelapses = timelapseResults.data ?? [];
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
+      >
         <div>
-          <Title level={3} style={{ marginBottom: 4 }}>Photos</Title>
-          <Text type="secondary">Timelapse capture of whole systems and roots.</Text>
+          <Title level={3} style={{ marginBottom: 4 }}>
+            Photos
+          </Title>
+          <Text type="secondary">
+            Timelapse capture of whole systems and roots.
+          </Text>
         </div>
-        <Button type="primary" icon={<CameraOutlined />}>New Timelapse</Button>
+        <Button type="primary" icon={<CameraOutlined />}>
+          New Timelapse
+        </Button>
       </div>
 
       <Row gutter={[16, 16]}>
-        {photoSets.map((p) => (
-          <Col xs={24} sm={12} md={8} key={p.id}>
+        {timelapses.map((p) => (
+          <Col xs={24} sm={12} md={8} key={p.name}>
             <Card
               cover={
                 <div
                   style={{
                     height: 180,
-                    background: 'linear-gradient(135deg, #1f3a22, #3a7d34)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#fff',
+                    background: "linear-gradient(135deg, #1f3a22, #3a7d34)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#fff",
                   }}
                 >
                   <CameraOutlined style={{ fontSize: 48 }} />
                 </div>
               }
-              actions={[<PlayCircleOutlined key="play" />]}
+              actions={[
+                <a href={`/api/timelapse/${p.name}/timelapse.mjpeg`}>
+                  <PlayCircleOutlined key="play" />
+                </a>,
+              ]}
             >
-              <Card.Meta
-                title={p.name}
-                description={
-                  <Space direction="vertical" size={2}>
-                    <span><Tag color={p.target === 'Roots' ? 'gold' : 'green'}>{p.target}</Tag></span>
-                    <Text type="secondary">Every {p.interval} · {p.frames} frames</Text>
-                    <Text type="secondary">Latest: {p.latest}</Text>
-                  </Space>
-                }
-              />
+              <Card.Meta title={p.name} />
             </Card>
           </Col>
         ))}

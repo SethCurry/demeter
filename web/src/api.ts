@@ -147,6 +147,10 @@ export interface SystemWaterTemperature {
   WaterTemperatureC: number;
 }
 
+export interface Timelapse {
+  name: string;
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { Accept: "application/json" },
@@ -401,6 +405,7 @@ export const api = {
       content,
       timestamp,
     }),
+  listTimelapses: () => getJson<Timelapse[]>("/api/timelapse"),
 };
 
 // --- Nullable field unwrap helpers -----------------------------------------

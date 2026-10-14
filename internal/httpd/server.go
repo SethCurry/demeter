@@ -242,5 +242,11 @@ func Run(addr string, db *models.Queries) error {
 		plantNotes.DELETE("/:id", deletePlantNoteHandler(db))
 	}
 
+	timelapse := r.Group("/api/timelapse")
+	{
+		timelapse.GET("", listTimelapseHandler("/srv/demeter/timelapse"))
+		timelapse.GET("/:mac/timelapse.mjpeg", getTimelapse("/srv/demeter/timelapse"))
+	}
+
 	return r.Run(addr)
 }
