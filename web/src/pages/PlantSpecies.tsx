@@ -2,13 +2,11 @@ import React, { useState } from 'react';
 import { Typography, Table, Tag, Space, Button, Modal, Form, Input, Select, message, Alert, Spin } from 'antd';
 import { PlusOutlined, ReloadOutlined, TagsOutlined } from '@ant-design/icons';
 import { useAsync } from '../hooks/useAsync';
-import { useNavigate } from 'react-router-dom';
 import { api, nullInt, type PlantSpecies as PlantSpeciesModel, type PlantGenus, type Plant } from '../api';
 
 const { Title, Text } = Typography;
 
 const PlantSpecies: React.FC = () => {
-  const navigate = useNavigate();
   const species = useAsync<PlantSpeciesModel[]>(() => api.listPlantSpecies(), []);
   const genera = useAsync<PlantGenus[]>(() => api.listPlantGenera(), []);
   const plants = useAsync<Plant[]>(() => api.listPlants(), []);
@@ -58,7 +56,7 @@ const PlantSpecies: React.FC = () => {
       title: 'Name',
       key: 'name',
       render: (_: unknown, r: PlantSpeciesModel) => (
-        <a onClick={() => navigate(`/plant-species/${r.ID}`)}>{speciesLabel(r)}</a>
+        <a href={`/plant-species/${r.ID}`}>{speciesLabel(r)}</a>
       ),
     },
     {
@@ -69,7 +67,7 @@ const PlantSpecies: React.FC = () => {
         if (gid == null) return <Tag>unclassified</Tag>;
         const genus = genusById.get(gid);
         return genus ? (
-          <a onClick={() => navigate(`/plant-genera/${genus.ID}`)}>{genus.Name}</a>
+          <a href={`/plant-genera/${genus.ID}`}>{genus.Name}</a>
         ) : (
           `#${gid}`
         );

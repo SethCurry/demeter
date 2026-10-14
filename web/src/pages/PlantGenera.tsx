@@ -2,13 +2,11 @@ import React, { useState } from 'react';
 import { Typography, Table, Tag, Space, Button, Modal, Form, Input, message, Alert, Spin } from 'antd';
 import { PlusOutlined, ReloadOutlined, ClusterOutlined } from '@ant-design/icons';
 import { useAsync } from '../hooks/useAsync';
-import { useNavigate } from 'react-router-dom';
 import { api, type PlantGenus, type PlantSpecies } from '../api';
 
 const { Title, Text } = Typography;
 
 const PlantGenera: React.FC = () => {
-  const navigate = useNavigate();
   const genera = useAsync<PlantGenus[]>(() => api.listPlantGenera(), []);
   const species = useAsync<PlantSpecies[]>(() => api.listPlantSpecies(), []);
 
@@ -49,7 +47,7 @@ const PlantGenera: React.FC = () => {
       title: 'Name',
       key: 'name',
       render: (_: unknown, r: PlantGenus) => (
-        <a onClick={() => navigate(`/plant-genera/${r.ID}`)}>{r.Name}</a>
+        <a href={`/plant-genera/${r.ID}`}>{r.Name}</a>
       ),
     },
     {

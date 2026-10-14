@@ -1,14 +1,12 @@
 import React from "react";
-import { Row, Col, Card, Typography, Empty, Button, Tag, Space } from "antd";
+import { Row, Col, Card, Typography, Empty, Button, Space } from "antd";
 import { CameraOutlined, PlayCircleOutlined } from "@ant-design/icons";
 import { useAsync } from "../hooks/useAsync";
 import { api, Timelapse } from "../api";
-import { useNavigate } from "react-router-dom";
 
 const { Title, Text, Paragraph } = Typography;
 
 const Photos: React.FC = () => {
-  const navigate = useNavigate();
   const timelapseResults = useAsync<Timelapse[]>(
     () => api.listTimelapses(),
     [],

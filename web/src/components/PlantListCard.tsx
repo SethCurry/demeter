@@ -1,5 +1,5 @@
 import { Card, Table } from "antd";
-import { nullString, nullTime, type Plant, type PlantWithFlow } from "../api";
+import { nullTime, type Plant, type PlantWithFlow } from "../api";
 import { useNavigate } from "react-router-dom";
 
 interface PlantListCardProps {

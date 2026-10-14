@@ -2,13 +2,11 @@ import React, { useState } from 'react';
 import { Typography, Table, Tag, Space, Button, Modal, Form, Input, Select, message, Alert, Spin } from 'antd';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useAsync } from '../hooks/useAsync';
-import { useNavigate } from 'react-router-dom';
 import { api, nullInt, type Flow, type System, type PlantSite } from '../api';
 
 const { Title, Text } = Typography;
 
 const Flows: React.FC = () => {
-  const navigate = useNavigate();
   const flw = useAsync<Flow[]>(() => api.listFlows(), []);
   const sys = useAsync<System[]>(() => api.listSystems(), []);
   const sites = useAsync<PlantSite[]>(() => api.listPlantSites(), []);
@@ -48,7 +46,7 @@ const Flows: React.FC = () => {
       title: 'Name',
       key: 'name',
       render: (_: unknown, r: Flow) => (
-        <a onClick={() => navigate(`/flows/${r.ID}`)}>{r.Name}</a>
+        <a href={`/flows/${r.ID}`}>{r.Name}</a>
       ),
     },
     {
@@ -56,7 +54,7 @@ const Flows: React.FC = () => {
       key: 'system',
       render: (_: unknown, r: Flow) => {
         const s = systemById.get(r.SystemID);
-        return s ? <a onClick={() => navigate(`/systems/${s.ID}`)}>{s.Name}</a> : '—';
+        return s ? <a href={`/systems/${s.ID}`}>{s.Name}</a> : '—';
       },
     },
     {
@@ -67,7 +65,7 @@ const Flows: React.FC = () => {
         if (pid == null) return <Tag>root</Tag>;
         const parent = flowById.get(pid);
         return parent ? (
-          <a onClick={() => navigate(`/flows/${parent.ID}`)}>{parent.Name}</a>
+          <a href={`/flows/${parent.ID}`}>{parent.Name}</a>
         ) : (
           `#${pid}`
         );
@@ -81,7 +79,7 @@ const Flows: React.FC = () => {
   ];
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <Title level={3} style={{ marginBottom: 4 }}>Flows</Title>
@@ -97,7 +95,7 @@ const Flows: React.FC = () => {
         </Space>
       </div>
 
-      {error && <Alert type="error" message="Failed to load data" description={error} showIcon />}
+      {error && <Alert type="error" title="Failed to load data" description={error} showIcon />}
 
       <Spin spinning={loading}>
         <Table rowKey="ID" columns={columns} dataSource={flows} pagination={false} />

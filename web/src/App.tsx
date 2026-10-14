@@ -9,8 +9,6 @@ import {
   ClusterOutlined,
   TagsOutlined,
   CameraOutlined,
-  ToolOutlined,
-  SettingOutlined,
   AppstoreOutlined,
   SlidersOutlined,
 } from '@ant-design/icons';

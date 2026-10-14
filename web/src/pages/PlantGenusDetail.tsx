@@ -114,7 +114,7 @@ const PlantGenusDetail: React.FC = () => {
       title: 'Name',
       key: 'name',
       render: (_: unknown, r: PlantSpecies) => (
-        <a onClick={() => navigate(`/plant-species/${r.ID}`)}>{r.Name}</a>
+        <a href={`/plant-species/${r.ID}`}>{r.Name}</a>
       ),
     },
     {

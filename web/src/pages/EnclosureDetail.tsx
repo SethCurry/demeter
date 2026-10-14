@@ -185,7 +185,7 @@ const EnclosureDetail: React.FC = () => {
       dataIndex: "Name",
       key: "name",
       render: (name: string, r: Flow) => (
-        <a onClick={() => navigate(`/flows/${r.ID}`)}>{name}</a>
+        <a href={`/flows/${r.ID}`}>{name}</a>
       ),
     },
     {
@@ -194,7 +194,7 @@ const EnclosureDetail: React.FC = () => {
       render: (_: unknown, r: Flow) => {
         const s = systemById.get(r.SystemID);
         return s ? (
-          <a onClick={() => navigate(`/systems/${s.ID}`)}>{s.Name}</a>
+          <a href={`/systems/${s.ID}`}>{s.Name}</a>
         ) : (
           "—"
         );
@@ -208,7 +208,7 @@ const EnclosureDetail: React.FC = () => {
         if (pid == null) return <Tag>root</Tag>;
         const parent = flowById.get(pid);
         return parent ? (
-          <a onClick={() => navigate(`/flows/${parent.ID}`)}>{parent.Name}</a>
+          <a href={`/flows/${parent.ID}`}>{parent.Name}</a>
         ) : (
           `#${pid}`
         );

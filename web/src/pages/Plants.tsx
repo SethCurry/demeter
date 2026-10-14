@@ -82,7 +82,7 @@ const Plants: React.FC = () => {
       key: 'flow',
       render: (_: unknown, r: PlantSite) => {
         const f = flowById.get(r.FlowID);
-        return f ? <a onClick={() => navigate(`/flows/${f.ID}`)}>{f.Name}</a> : '—';
+        return f ? <a href={`/flows/${f.ID}`}>{f.Name}</a> : '—';
       },
     },
     { title: 'X', dataIndex: 'X', key: 'x', width: 60 },
@@ -110,7 +110,7 @@ const Plants: React.FC = () => {
         const species = sid != null ? speciesById.get(sid) : undefined;
         if (!species) return '—';
         return (
-          <a onClick={() => navigate(`/plant-species/${species.ID}`)}>{speciesLabel(species)}</a>
+          <a href={`/plant-species/${species.ID}`}>{speciesLabel(species)}</a>
         );
       },
     },
