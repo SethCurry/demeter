@@ -1,5 +1,6 @@
 [en]
   label = "English"
+  locale = "en_US"
   contentDir = "content/en"
   weight = 10
   [en.params]
