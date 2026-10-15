@@ -11,6 +11,8 @@ rssLimit = 10
 summarylength = 20 # 70 (default)
 
 # Multilingual
+defaultContentLanguage = "en"
+defaultContentLanguageInSubdir = false
 
 copyRight = "Copyright (c) 2020-2026 Seth Curry"
 
