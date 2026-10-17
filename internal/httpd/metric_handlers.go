@@ -82,7 +82,7 @@ func metricEnclosureHumidity(db *models.Queries) gin.HandlerFunc {
 
 		intervalSeconds := totalSeconds/int(limit)
 
-		var values []MetricResult
+		values := []MetricResult{}
 		intervalStartsAt := startTime
 		intervalEndsAt := startTime.Add(time.Second*time.Duration(intervalSeconds))
 		var currentSum float64
@@ -159,7 +159,7 @@ func metricEnclosureAirTemperature(db *models.Queries) gin.HandlerFunc {
 
 		intervalSeconds := totalSeconds/int(limit)
 
-		var values []MetricResult
+		values := []MetricResult{}
 		intervalStartsAt := startTime
 		intervalEndsAt := startTime.Add(time.Second*time.Duration(intervalSeconds))
 		var currentSum float64

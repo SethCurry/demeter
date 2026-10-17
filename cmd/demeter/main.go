@@ -164,7 +164,7 @@ func main() {
 					&cli.StringFlag{
 						Name:    "addr",
 						Usage:   "Address of the Demeter server",
-						Value:   "localhost:8080",
+						Value:   "localhost:8249",
 						Sources: cli.EnvVars("DEMETER_ADDR"),
 					},
 					&cli.DurationFlag{
