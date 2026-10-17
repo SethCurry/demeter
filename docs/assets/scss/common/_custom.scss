@@ -1,1 +1,20 @@
 // Put your custom SCSS code here
+@font-face {
+    font-family: 'LoversQuarrel';
+    src: url("/fonts/LoversQuarrel-Regular.ttf") format('truetype');
+}
+
+.loversquarrel {
+    font-family: 'LoversQuarrel';
+}
+
+.bg-img {
+    background-image: url("/img/banner.jpg");
+    background-position: 0vh 5vh;
+    width: 100vw ;
+    height: 70vh;
+    margin-top: -20rem;
+    background-size: cover;
+    box-shadow: 0 0 200px rgba(0,0,0,0.9) inset;
+    z-index: -1;
+}
