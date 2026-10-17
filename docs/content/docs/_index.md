@@ -16,5 +16,5 @@ params:
   section:
     title: "Documentation"
     iconName: "book"
-    startUrl: "/docs/guides/example-guide/"
+    startUrl: "/docs/guides/getting-started/"
 ---

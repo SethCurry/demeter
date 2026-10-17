@@ -13,18 +13,28 @@ Welcome to Demeter!
 ## A Quick Overview
 
 ```mermaid
-usecase-beta
-  direction LR
-  actor User
+architecture-beta
+    group esp(server)[ESP32]
+    group demeter(server)[Demeter]
 
-  systemBoundary DemeterWeb
-    WebAPI("HTTP API")
-  end
+    service api(server)[REST API] in demeter
+    service db(disk)[SQLite] in demeter
+    api:R --> L:db
 
-  systemBoundary DemeterSensor
-    Metrics("Metrics")
-  end
+    junction websocket in esp
 
-  User --> WebAPI
-  Metrics -- "websocket" --> WebAPI
+    service camera(disk)[Camera] in esp
+    camera:T -- B:websocket
+
+    service thermometer(disk)[Thermometer] in esp
+    thermometer:T -- B:websocket
+
+    service hygrometer(disk)[Hygrometer] in esp
+    hygrometer:T -- B:websocket
+
+    websocket:T --> B:api
+
+    align row api db
+    align row thermometer camera hygrometer
+    align column api websocket
 ```
