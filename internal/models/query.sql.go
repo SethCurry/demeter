@@ -1738,6 +1738,166 @@ func (q *Queries) MetricsEnclosureAirTemperatures(ctx context.Context, arg Metri
 	return items, nil
 }
 
+const metricsPlantSiteLux = `-- name: MetricsPlantSiteLux :many
+SELECT id, plant_site_id, timestamp, lux FROM plant_site_lux
+WHERE plant_site_id = ? AND timestamp > ? AND timestamp < ?
+ORDER BY timestamp DESC
+`
+
+type MetricsPlantSiteLuxParams struct {
+	PlantSiteID int64
+	Timestamp   sql.NullTime
+	Timestamp_2 sql.NullTime
+}
+
+func (q *Queries) MetricsPlantSiteLux(ctx context.Context, arg MetricsPlantSiteLuxParams) ([]PlantSiteLux, error) {
+	rows, err := q.db.QueryContext(ctx, metricsPlantSiteLux, arg.PlantSiteID, arg.Timestamp, arg.Timestamp_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlantSiteLux
+	for rows.Next() {
+		var i PlantSiteLux
+		if err := rows.Scan(
+			&i.ID,
+			&i.PlantSiteID,
+			&i.Timestamp,
+			&i.Lux,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const metricsSystemEC = `-- name: MetricsSystemEC :many
+SELECT id, system_id, timestamp, ec FROM system_ec
+WHERE system_id = ? AND timestamp > ? AND timestamp < ?
+ORDER BY timestamp DESC
+`
+
+type MetricsSystemECParams struct {
+	SystemID    int64
+	Timestamp   sql.NullTime
+	Timestamp_2 sql.NullTime
+}
+
+func (q *Queries) MetricsSystemEC(ctx context.Context, arg MetricsSystemECParams) ([]SystemEc, error) {
+	rows, err := q.db.QueryContext(ctx, metricsSystemEC, arg.SystemID, arg.Timestamp, arg.Timestamp_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SystemEc
+	for rows.Next() {
+		var i SystemEc
+		if err := rows.Scan(
+			&i.ID,
+			&i.SystemID,
+			&i.Timestamp,
+			&i.Ec,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const metricsSystemPH = `-- name: MetricsSystemPH :many
+SELECT id, system_id, timestamp, ph FROM system_ph
+WHERE system_id = ? AND timestamp > ? AND timestamp < ?
+ORDER BY timestamp DESC
+`
+
+type MetricsSystemPHParams struct {
+	SystemID    int64
+	Timestamp   sql.NullTime
+	Timestamp_2 sql.NullTime
+}
+
+func (q *Queries) MetricsSystemPH(ctx context.Context, arg MetricsSystemPHParams) ([]SystemPh, error) {
+	rows, err := q.db.QueryContext(ctx, metricsSystemPH, arg.SystemID, arg.Timestamp, arg.Timestamp_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SystemPh
+	for rows.Next() {
+		var i SystemPh
+		if err := rows.Scan(
+			&i.ID,
+			&i.SystemID,
+			&i.Timestamp,
+			&i.Ph,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const metricsSystemWaterTemperature = `-- name: MetricsSystemWaterTemperature :many
+SELECT id, system_id, timestamp, water_temperature_c FROM system_water_temperature
+WHERE system_id = ? AND timestamp > ? AND timestamp < ?
+ORDER BY timestamp DESC
+`
+
+type MetricsSystemWaterTemperatureParams struct {
+	SystemID    int64
+	Timestamp   sql.NullTime
+	Timestamp_2 sql.NullTime
+}
+
+func (q *Queries) MetricsSystemWaterTemperature(ctx context.Context, arg MetricsSystemWaterTemperatureParams) ([]SystemWaterTemperature, error) {
+	rows, err := q.db.QueryContext(ctx, metricsSystemWaterTemperature, arg.SystemID, arg.Timestamp, arg.Timestamp_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SystemWaterTemperature
+	for rows.Next() {
+		var i SystemWaterTemperature
+		if err := rows.Scan(
+			&i.ID,
+			&i.SystemID,
+			&i.Timestamp,
+			&i.WaterTemperatureC,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateEnclosure = `-- name: UpdateEnclosure :one
 UPDATE enclosure
 SET name = ?

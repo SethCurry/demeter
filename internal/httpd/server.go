@@ -3,8 +3,11 @@ package httpd
 import (
 	"database/sql"
 	"errors"
+	"io/fs"
+	"net/http"
 	"time"
 
+	"github.com/SethCurry/demeter/internal/embedded"
 	"github.com/SethCurry/demeter/internal/models"
 	"github.com/SethCurry/demeter/internal/sensor"
 	"github.com/gin-gonic/gin"
@@ -106,6 +109,9 @@ func Run(addr string, db *models.Queries) error {
 		systems.GET("", listSystemsHandler(db))
 		systems.POST("", createSystemHandler(db))
 		systems.GET("/:id", getSystemHandler(db))
+		systems.GET("/:id/metrics/ph", metricSystemPH(db))
+		systems.GET("/:id/metrics/ec", metricSystemEC(db))
+		systems.GET("/:id/metrics/water-temperature", metricSystemWaterTemperature(db))
 		systems.GET("/:id/ph", listSystemPHHandler(db))
 		systems.GET("/:id/ec", listSystemECHandler(db))
 		systems.GET("/:id/water-temperature", listSystemWaterTemperatureHandler(db))
@@ -131,6 +137,7 @@ func Run(addr string, db *models.Queries) error {
 		plantSites.PUT("/:id", updatePlantSiteHandler(db))
 		plantSites.DELETE("/:id", deletePlantSiteHandler(db))
 		plantSites.GET("/:id/lux", listPlantSiteLuxHandler(db))
+		plantSites.GET("/:id/metrics/lux", metricPlantSiteLux(db))
 	}
 
 	plants := r.Group("/api/plants")
@@ -250,5 +257,19 @@ func Run(addr string, db *models.Queries) error {
 		timelapse.GET("/:mac/timelapse.mjpeg", getTimelapse("/srv/demeter/timelapse"))
 	}
 
+	r.NoRoute(staticHandler())
+
 	return r.Run(addr)
+}
+
+func staticHandler() gin.HandlerFunc {
+	uiFS, err := fs.Sub(embedded.UI, "ui")
+	if err != nil {
+		panic("failed to create sub-filesystem for embedded UI: " + err.Error())
+	}
+
+	staticFS := http.FileServerFS(uiFS)
+	return func(ctx *gin.Context) {
+		staticFS.ServeHTTP(ctx.Writer, ctx.Request)
+	}
 }

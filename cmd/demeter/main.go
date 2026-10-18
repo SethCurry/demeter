@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"embed"
 	"fmt"
 	"math/rand/v2"
 	"net/url"
@@ -11,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/SethCurry/demeter/internal/embedded"
 	"github.com/SethCurry/demeter/internal/httpd"
 	"github.com/SethCurry/demeter/internal/models"
 	"github.com/SethCurry/demeter/pkg/demeter"
@@ -20,9 +20,6 @@ import (
 	"github.com/urfave/cli/v3"
 	_ "modernc.org/sqlite"
 )
-
-//go:embed schema.sql
-var schemaFS embed.FS
 
 type SQLConfig struct {
 	Path string
@@ -109,12 +106,7 @@ func runSensorSimulator(ctx context.Context, cmd *cli.Command) error {
 }
 
 func ensureSchema(db *sql.DB) error {
-	schema, err := schemaFS.ReadFile("schema.sql")
-	if err != nil {
-		return fmt.Errorf("read embedded schema: %w", err)
-	}
-
-	if _, err := db.Exec(string(schema)); err != nil {
+	if _, err := db.Exec(embedded.SQLSchema); err != nil {
 		return nil
 		//return fmt.Errorf("apply schema: %w", err)
 	}

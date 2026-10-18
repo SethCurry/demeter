@@ -324,6 +324,26 @@ SELECT * FROM enclosure_air_humidity
 WHERE enclosure_id = ? AND timestamp > ? AND timestamp < ?
 ORDER BY timestamp DESC;
 
+-- name: MetricsSystemPH :many
+SELECT * FROM system_ph
+WHERE system_id = ? AND timestamp > ? AND timestamp < ?
+ORDER BY timestamp DESC;
+
+-- name: MetricsSystemEC :many
+SELECT * FROM system_ec
+WHERE system_id = ? AND timestamp > ? AND timestamp < ?
+ORDER BY timestamp DESC;
+
+-- name: MetricsSystemWaterTemperature :many
+SELECT * FROM system_water_temperature
+WHERE system_id = ? AND timestamp > ? AND timestamp < ?
+ORDER BY timestamp DESC;
+
+-- name: MetricsPlantSiteLux :many
+SELECT * FROM plant_site_lux
+WHERE plant_site_id = ? AND timestamp > ? AND timestamp < ?
+ORDER BY timestamp DESC;
+
 
 -- name: CreateEnclosureAirTemperature :exec
 INSERT INTO enclosure_air_temperature (enclosure_id, temperature_c)

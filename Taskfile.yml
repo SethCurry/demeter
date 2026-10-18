@@ -10,6 +10,22 @@ tasks:
         dir: docs
         cmds:
             - npm run dev
+    build:
+        deps:
+            - embed
+        cmds:
+            - go build ./cmd/demeter
+    embed:
+        deps:
+            - build-ui
+        cmds:
+            - cp ./sql/schema.sql ./internal/embedded/schema.sql
+            - rm -rf ./internal/embedded/ui
+            - cp -r ./web/build ./internal/embedded/ui
+    build-ui:
+        dir: web
+        cmds:
+            - npm run build
     ui:
         dir: web
         cmds:
