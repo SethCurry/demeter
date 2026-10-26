@@ -5,6 +5,7 @@
       "article",
       "aside",
       "base",
+      "blockquote",
       "body",
       "button",
       "circle",
@@ -32,6 +33,7 @@
       "meta",
       "nav",
       "noscript",
+      "ol",
       "p",
       "path",
       "pre",
@@ -43,9 +45,15 @@
       "style",
       "summary",
       "svg",
+      "table",
+      "tbody",
+      "td",
       "template",
+      "th",
+      "thead",
       "time",
       "title",
+      "tr",
       "ul"
     ],
     "classes": [
@@ -252,6 +260,7 @@
       "ai-dropdown",
       "copy-markdown",
       "doks-docs-nav",
+      "how-it-fits-together",
       "offcanvasNavMain",
       "offcanvasNavMainLabel",
       "offcanvasNavSection",
@@ -264,7 +273,11 @@
       "searchToggleDesktop",
       "searchToggleMobile",
       "socialMenu",
-      "toc"
+      "the-domain-model",
+      "toc",
+      "what-is-demeter",
+      "what-it-can-do-for-you",
+      "what-it-measures"
     ]
   }
 }

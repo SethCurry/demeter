@@ -33,3 +33,6 @@ includes:
     esp:
         taskfile: ./esp-sensor
         dir: ./esp-sensor
+    docs:
+        dir: ./docs
+        taskfile: ./docs
