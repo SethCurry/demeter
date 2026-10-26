@@ -1,0 +1,13 @@
+{
+    "domain": "demeter",
+    "name": "Demeter",
+    "codeowners": ["@SethCurry"],
+    "config_flow": true,
+    "dependencies": [],
+    "documentation": "https://github.com/SethCurry/demeter",
+    "integration_type": "hub",
+    "iot_class": "local_poll",
+    "quality_scale": "bronze",
+    "requirements": [],
+    "version": "0.1.0"
+}

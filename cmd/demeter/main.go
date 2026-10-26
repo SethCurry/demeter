@@ -145,7 +145,17 @@ func main() {
 			{
 				Name:  "server",
 				Usage: "Run the Demeter server",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name: "address",
+						Value: "",
+					},
+				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
+					address := cmd.String("address")
+					if address != "" {
+						cfg.HTTP.Addr = address
+					}
 					return httpd.Run(cfg.HTTP.Addr, queries)
 				},
 			},

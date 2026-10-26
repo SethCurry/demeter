@@ -17,17 +17,19 @@ tasks:
             - go build ./cmd/demeter
     embed:
         deps:
-            - build-ui
+            - ui:build
         cmds:
             - cp ./sql/schema.sql ./internal/embedded/schema.sql
             - rm -rf ./internal/embedded/ui
             - cp -r ./web/build ./internal/embedded/ui
-    build-ui:
-        dir: web
-        cmds:
-            - npm run build
+
+includes:
     ui:
         dir: web
-        cmds:
-            - npm install
-            - npm start
+        taskfile: ./web
+    dev:
+        taskfile: ./dev
+        dir: ./dev
+    esp:
+        taskfile: ./esp-sensor
+        dir: ./esp-sensor

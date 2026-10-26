@@ -1,0 +1,5 @@
+# Home Assistant writes its state (auth, registries, recorder DB) here.
+# Only configuration.yaml is tracked in git.
+*
+!.gitignore
+!configuration.yaml

@@ -1,0 +1,55 @@
+# Development/test stack for demeter.
+#
+# Usage (from this directory):
+#   docker compose up -d --build   # start Home Assistant + mock demeter API
+#   ./test.sh                      # start and run the end-to-end smoke test
+#   docker compose down            # stop everything
+#
+# Home Assistant uses the official image and gets the integration from
+# ../python/homeassistant mounted at /config/custom_components/demeter. Set
+# DEMETER_HA_INTEGRATION to point at a different integration checkout. The
+# mock API provides deterministic data so clients can be exercised without a
+# physical demeter server or a seeded database.
+
+services:
+    homeassistant:
+        image: ghcr.io/home-assistant/home-assistant:stable
+        restart: "no"
+        # The helper scripts pass the host UID/GID so files Home Assistant
+        # writes under ./config stay owned by the developer running them.
+        user: "${HA_UID:-0}:${HA_GID:-0}"
+        depends_on:
+            demeter-mock:
+                condition: service_healthy
+        ports:
+            - "${HA_PORT:-8123}:8123"
+        volumes:
+            - ./config:/config
+            # The Home Assistant integration lives outside this harness so the
+            # harness can stay at the repository root and be reused for other
+            # parts of demeter.
+            - ${DEMETER_HA_INTEGRATION:-../python/homeassistant}:/config/custom_components/demeter:ro
+        environment:
+            TZ: "${TZ:-UTC}"
+        # Allows a manually started demeter server on the host to be reached
+        # as http://host.docker.internal:8249 from Home Assistant.
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+
+    demeter-mock:
+        image: python:3.13-alpine
+        restart: "no"
+        command: ["python", "-u", "/app/mock_demeter.py"]
+        volumes:
+            - ./mock_demeter.py:/app/mock_demeter.py:ro
+        ports:
+            - "${DEMETER_PORT:-18249}:8249"
+        healthcheck:
+            test:
+                - CMD
+                - python
+                - -c
+                - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8249/api/enclosures')"
+            interval: 2s
+            timeout: 3s
+            retries: 20

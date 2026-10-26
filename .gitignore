@@ -1,3 +1,4 @@
 /demeter-go
 /demeter
 *.sqlite
+__pycache__

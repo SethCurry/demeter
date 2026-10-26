@@ -1,0 +1,9 @@
+# Minimal Home Assistant configuration for the demeter integration test
+# harness. default_config brings in the frontend, API, recorder and the
+# config-entry REST endpoints used by smoke_test.py.
+default_config:
+
+logger:
+  default: info
+  logs:
+    custom_components.demeter: debug

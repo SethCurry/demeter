@@ -1,0 +1,17 @@
+# https://taskfile.dev
+
+version: "3"
+
+vars:
+  GREETING: Hello, World!
+
+tasks:
+  install:
+    cmds:
+      - npm install
+  dev:
+    cmds:
+      - npm start
+  build:
+    cmds:
+      - npm run build

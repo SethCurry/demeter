@@ -1,0 +1,20 @@
+# https://taskfile.dev
+
+version: "3"
+
+vars:
+    GREETING: Hello, World!
+
+tasks:
+    up:
+        cmds:
+            - ./up.sh
+    test:
+        cmds:
+            - ./test.sh
+    down:
+        cmds:
+            - ./down.sh
+    mock:
+        cmds:
+            - ./mock.sh
