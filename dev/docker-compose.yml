@@ -2,6 +2,7 @@
 #
 # Usage (from this directory):
 #   docker compose up -d --build   # start Home Assistant + mock demeter API
+#   ./serve.sh                     # start the stack with the real server instead
 #   ./test.sh                      # start and run the end-to-end smoke test
 #   docker compose down            # stop everything
 #
@@ -12,44 +13,80 @@
 # physical demeter server or a seeded database.
 
 services:
-    homeassistant:
-        image: ghcr.io/home-assistant/home-assistant:stable
-        restart: "no"
-        # The helper scripts pass the host UID/GID so files Home Assistant
-        # writes under ./config stay owned by the developer running them.
-        user: "${HA_UID:-0}:${HA_GID:-0}"
-        depends_on:
-            demeter-mock:
-                condition: service_healthy
-        ports:
-            - "${HA_PORT:-8123}:8123"
-        volumes:
-            - ./config:/config
-            # The Home Assistant integration lives outside this harness so the
-            # harness can stay at the repository root and be reused for other
-            # parts of demeter.
-            - ${DEMETER_HA_INTEGRATION:-../python/homeassistant}:/config/custom_components/demeter:ro
-        environment:
-            TZ: "${TZ:-UTC}"
-        # Allows a manually started demeter server on the host to be reached
-        # as http://host.docker.internal:8249 from Home Assistant.
-        extra_hosts:
-            - "host.docker.internal:host-gateway"
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    restart: "no"
+    # The helper scripts pass the host UID/GID so files Home Assistant
+    # writes under ./config stay owned by the developer running them.
+    user: "${HA_UID:-0}:${HA_GID:-0}"
+    depends_on:
+      demeter-mock:
+        condition: service_healthy
+    ports:
+      - "${HA_PORT:-8123}:8123"
+    volumes:
+      - ./config:/config
+      # The Home Assistant integration lives outside this harness so the
+      # harness can stay at the repository root and be reused for other
+      # parts of demeter.
+      - ${DEMETER_HA_INTEGRATION:-../python/homeassistant}:/config/custom_components/demeter:ro
+    environment:
+      TZ: "${TZ:-UTC}"
+    # Allows a manually started demeter server on the host to be reached
+    # as http://host.docker.internal:8249 from Home Assistant.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
-    demeter-mock:
-        image: python:3.13-alpine
-        restart: "no"
-        command: ["python", "-u", "/app/mock_demeter.py"]
-        volumes:
-            - ./mock_demeter.py:/app/mock_demeter.py:ro
-        ports:
-            - "${DEMETER_PORT:-18249}:8249"
-        healthcheck:
-            test:
-                - CMD
-                - python
-                - -c
-                - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8249/api/enclosures')"
-            interval: 2s
-            timeout: 3s
-            retries: 20
+  # The real demeter server, running the binary built at the repository root.
+  # This lives behind the "live" profile so the default stack (and the smoke
+  # test) does not require a compiled binary. Start it with ./serve.sh.
+  demeter:
+    image: debian:bookworm-slim
+    restart: "no"
+    profiles:
+      - live
+    # The binary links against glibc, so it needs a Debian-based image
+    # rather than Alpine.
+    command: ["/usr/local/bin/demeter", "server", "--address", ":8249"]
+    working_dir: /data
+    volumes:
+      # DEMETER_BINARY points at the copy built at the repository root
+      # ("task build"). The server writes demeter.sqlite relative to its
+      # working directory, so that lives on the demeter-data volume.
+      - ${DEMETER_BINARY:-../demeter}:/usr/local/bin/demeter:ro
+      - demeter-data:/data
+    ports:
+      - "${DEMETER_SERVER_PORT:-8249}:8249"
+    healthcheck:
+      # debian-slim has no curl/wget, and /bin/sh is dash, so use bash's
+      # /dev/tcp to check that the server is listening.
+      test:
+        - CMD
+        - bash
+        - -c
+        - "exec 3<>/dev/tcp/127.0.0.1/8249"
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  demeter-mock:
+    image: python:3.13-alpine
+    restart: "no"
+    command: ["python", "-u", "/app/mock_demeter.py"]
+    volumes:
+      - ./mock_demeter.py:/app/mock_demeter.py:ro
+    ports:
+      - "${DEMETER_PORT:-18249}:8249"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8249/api/enclosures')"
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  # Persistent SQLite database for the containerised real demeter server.
+  demeter-data:

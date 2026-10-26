@@ -3,19 +3,22 @@
 Shared development/test tooling that lives at the repository root so it can be
 used to exercise any part of demeter, not just a single integration.
 
-It currently provides two things:
+It currently provides three things:
 
 - a **mock demeter HTTP API** (`mock_demeter.py`) with a fixed topology and
   deterministic readings, for testing demeter clients without a physical
   server or a seeded database;
 - a **Home Assistant test stack** (`docker-compose.yml`) that runs the
   official Home Assistant image with the demeter integration mounted as a
-  custom component, plus the mock API.
+  custom component, plus the mock API;
+- a containerised **real demeter server**, which bind-mounts the binary built
+  at the repository root and runs it in the same stack.
 
 ```text
 dev/
 ├── docker-compose.yml   # Home Assistant + mock demeter stack
 ├── up.sh                # start the stack for manual testing
+├── serve.sh             # start the stack with the real demeter binary
 ├── down.sh              # stop the stack
 ├── test.sh              # start the stack and run smoke_test.py
 ├── smoke_test.py        # end-to-end Home Assistant integration test
@@ -103,6 +106,8 @@ task ha:down   # ./dev/down.sh
 | `HA_PORT`         | `8123`                    | Host port for Home Assistant             |
 | `HA_UID`/`HA_GID` | host user/group           | Owner for files Home Assistant writes    |
 | `DEMETER_PORT`    | `18249`                   | Host port for the mock demeter API       |
+| `DEMETER_BINARY`  | `../demeter`              | Binary bind-mounted into the real server container |
+| `DEMETER_SERVER_PORT` | `8249`                | Host port for the real demeter server    |
 | `HA_URL`          | `http://localhost:8123`   | Home Assistant URL used by the test      |
 | `DEMETER_URL`     | `http://demeter-mock:8249`| Host entered in the integration config flow |
 | `HA_USERNAME`     | `demeter-test`            | Test account username                    |
@@ -147,8 +152,36 @@ homeassistant`, or stop everything with `./dev/down.sh`.
 ## Testing against a real demeter server
 
 The mock is convenient for integration testing, but you can also point the
-integration at a real demeter server running on the host. The Home Assistant
-container has a `host.docker.internal` entry, so add the integration with:
+integration at a real demeter server. The automated smoke test is written
+against the mock's fixed values, so it only works with the mock service.
+
+### In a container
+
+`./dev/serve.sh` starts the same stack plus a `demeter` container that
+bind-mounts the binary at the repository root and runs it with its SQLite
+database on a Docker volume. Build the binary first:
+
+```sh
+task build          # writes ./demeter at the repository root
+./dev/serve.sh
+```
+
+Then add the integration with host `http://demeter:8249`, or use
+`http://localhost:8249` from the host. The binary's sensor simulator is
+available in the same container:
+
+```sh
+docker compose exec demeter /usr/local/bin/demeter simulate-sensor --addr demeter:8249
+```
+
+The real server is behind the Compose `live` profile so the default stack and
+`./dev/test.sh` do not need a compiled binary. Point `DEMETER_BINARY` at a
+different binary and `DEMETER_SERVER_PORT` at a different host port if needed.
+
+### On the host
+
+The Home Assistant container has a `host.docker.internal` entry, so a server
+running on the host can be used by adding the integration with:
 
 ```text
 http://host.docker.internal:8249
@@ -156,9 +189,6 @@ http://host.docker.internal:8249
 
 If demeter is running elsewhere on your network, use its address directly
 instead, as long as it is reachable from the Home Assistant container.
-
-The automated smoke test is written against the mock's fixed values, so it
-only works with the mock service.
 
 ## Extending the harness
 
