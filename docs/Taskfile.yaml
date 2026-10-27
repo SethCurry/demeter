@@ -14,5 +14,7 @@ tasks:
     cmds:
       - npm run openapi
   dev:
+    deps:
+      - openapi
     cmds:
       - npm run dev
