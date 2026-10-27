@@ -31,14 +31,14 @@ its SQLite file.
 
 To build from source you need:
 
-- **Go** 1.27 or newer &mdash; see the [`go` directive in
+- **Go** 1.27 or newer; see the [`go` directive in
   `go.mod`](https://go.dev/dl/).
-- **Node.js** and npm &mdash; the web control panel is a React + TypeScript
+- **Node.js** and npm. The web control panel is a React + TypeScript
   app that is built and embedded into the binary.
-- **[Task](https://taskfile.dev)** &mdash; the build orchestration tool. The
+- **[Task](https://taskfile.dev)** the build orchestration tool. The
   repo's `Taskfile.yml` drives the web build, copies the SQL schema and UI
   assets into `internal/embedded/`, and then runs `go build`.
-- **Git** &mdash; to clone the repository.
+- **Git** to clone the repository.
 
 The containerised option additionally needs **Docker with the Compose
 plugin**.
