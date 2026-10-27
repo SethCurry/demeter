@@ -2,3 +2,5 @@
 /demeter
 *.sqlite
 __pycache__
+.task
+

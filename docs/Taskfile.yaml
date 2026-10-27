@@ -6,6 +6,13 @@ vars:
   GREETING: Hello, World!
 
 tasks:
+  openapi:
+    sources:
+      - static/openapi.yaml
+    generates:
+      - static/openapi.html
+    cmds:
+      - npm run openapi
   dev:
     cmds:
       - npm run dev

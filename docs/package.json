@@ -14,11 +14,13 @@
     "portless": "portless run thulite-portless",
     "format": "prettier **/** -w -c",
     "build": "hugo --minify --gc",
-    "preview": "vite preview --outDir public"
+    "preview": "vite preview --outDir public",
+    "openapi": "npx @redocly/cli build-docs -o static/openapi.html static/openapi.yaml"
   },
   "dependencies": {
-    "@thulite/doks-core": "^1.9.4",
+    "@redocly/cli": "^2.71.2",
     "@tabler/icons": "^3.48.0",
+    "@thulite/doks-core": "^1.9.4",
     "@thulite/images": "^3.3.4",
     "@thulite/inline-svg": "^1.2.2",
     "@thulite/seo": "^2.4.4",
