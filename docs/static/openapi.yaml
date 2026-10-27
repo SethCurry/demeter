@@ -1,0 +1,1744 @@
+openapi: 3.0.3
+info:
+  title: Demeter API
+  version: 1.0.0
+  description: |
+    HTTP API for the Demeter hydroponics/enclosure management service.
+
+    # A note on nullable fields
+
+    The persistence layer uses SQLite `NULL`-able columns surfaced through
+    Go's `database/sql` `Null*` wrapper types (`sql.NullTime`,
+    `sql.NullString`, `sql.NullInt64`). When serialized with the default
+    `encoding/json` marshaller these fields are emitted as objects of the
+    shape `{"Time": "...", "Valid": true}` / `{"String": "...", "Valid": true}`
+    / `{"Int64": 0, "Valid": false}` rather than plain nullable scalars.
+
+    The schemas below model them as plain nullable properties for readability.
+    Clients should be prepared for the actual wrapper-object shape unless a
+    custom marshaller is added later.
+  contact:
+    name: Demeter
+    url: https://github.com/SethCurry/demeter
+servers:
+  - url: /
+    description: Local server
+tags:
+  - name: Enclosures
+  - name: Systems
+  - name: Flows
+  - name: PlantSites
+  - name: Plants
+  - name: PlantGenera
+  - name: PlantSpecies
+  - name: Notes
+  - name: Metrics
+  - name: Timelapse
+  - name: Sensors
+
+paths:
+  # ---------------------------------------------------------------- sensors
+  /api/websocket/sensors:
+    get:
+      tags: [Sensors]
+      summary: Sensor WebSocket endpoint
+      description: |
+        Upgrades the HTTP request to a WebSocket connection. Sensor readings
+        pushed by devices are received and persisted. Not a normal REST
+        endpoint; documented for completeness.
+      responses:
+        "101":
+          description: Switching Protocols (WebSocket upgrade)
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ------------------------------------------------------------- enclosures
+  /api/enclosures:
+    get:
+      tags: [Enclosures]
+      summary: List enclosures
+      responses:
+        "200":
+          description: Enclosure list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Enclosure" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [Enclosures]
+      summary: Create an enclosure
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EnclosureRequest" }
+      responses:
+        "201":
+          description: Created enclosure
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Enclosure" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409":
+          description: Enclosure name already exists
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/enclosures/{id}:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [Enclosures]
+      summary: Get an enclosure
+      responses:
+        "200":
+          description: Enclosure
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Enclosure" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: Enclosure not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [Enclosures]
+      summary: Update an enclosure
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EnclosureRequest" }
+      responses:
+        "200":
+          description: Updated enclosure
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Enclosure" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: Enclosure not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "409":
+          description: Enclosure name already exists
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [Enclosures]
+      summary: Delete an enclosure
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/enclosures/{id}/plants:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [Enclosures, Plants]
+      summary: List plants in an enclosure
+      responses:
+        "200":
+          description: Plants belonging to the enclosure
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Plant" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/enclosures/{id}/air-temperature:
+    parameters: [{ $ref: "#/components/parameters/Id" }, { $ref: "#/components/parameters/LimitQuery" }]
+    get:
+      tags: [Enclosures, Metrics]
+      summary: List raw air-temperature readings for an enclosure
+      responses:
+        "200":
+          description: Raw readings
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/EnclosureAirTemperature" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/enclosures/{id}/air-humidity:
+    parameters: [{ $ref: "#/components/parameters/Id" }, { $ref: "#/components/parameters/LimitQuery" }]
+    get:
+      tags: [Enclosures, Metrics]
+      summary: List raw air-humidity readings for an enclosure
+      responses:
+        "200":
+          description: Raw readings
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/EnclosureAirHumidity" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/enclosures/{id}/metrics/air-temperature:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { $ref: "#/components/parameters/MetricStart" }
+      - { $ref: "#/components/parameters/MetricEnd" }
+      - { $ref: "#/components/parameters/MetricLimit" }
+    get:
+      tags: [Enclosures, Metrics]
+      summary: Air-temperature metric series (interval-averaged)
+      responses:
+        "200":
+          description: Averaged metric series
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MetricResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/enclosures/{id}/metrics/air-humidity:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { $ref: "#/components/parameters/MetricStart" }
+      - { $ref: "#/components/parameters/MetricEnd" }
+      - { $ref: "#/components/parameters/MetricLimit" }
+    get:
+      tags: [Enclosures, Metrics]
+      summary: Air-humidity metric series (interval-averaged)
+      responses:
+        "200":
+          description: Averaged metric series
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MetricResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  # ---------------------------------------------------------------- systems
+  /api/systems:
+    get:
+      tags: [Systems]
+      summary: List systems
+      parameters:
+        - name: enclosure_id
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+          description: When set, only systems belonging to this enclosure are returned.
+      responses:
+        "200":
+          description: System list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/System" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [Systems]
+      summary: Create a system
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SystemRequest" }
+      responses:
+        "201":
+          description: Created system
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/System" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409":
+          description: System name already exists or enclosure does not exist
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/systems/{id}:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [Systems]
+      summary: Get a system
+      responses:
+        "200":
+          description: System
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/System" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: System not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [Systems]
+      summary: Update a system
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SystemRequest" }
+      responses:
+        "200":
+          description: Updated system
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/System" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: System not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "409":
+          description: System name already exists or enclosure does not exist
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [Systems]
+      summary: Delete a system
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/systems/{id}/ph:
+    parameters: [{ $ref: "#/components/parameters/Id" }, { $ref: "#/components/parameters/LimitQuery" }]
+    get:
+      tags: [Systems, Metrics]
+      summary: List raw pH readings for a system
+      responses:
+        "200":
+          description: Raw readings
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SystemPh" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/systems/{id}/ec:
+    parameters: [{ $ref: "#/components/parameters/Id" }, { $ref: "#/components/parameters/LimitQuery" }]
+    get:
+      tags: [Systems, Metrics]
+      summary: List raw EC readings for a system
+      responses:
+        "200":
+          description: Raw readings
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SystemEc" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/systems/{id}/water-temperature:
+    parameters: [{ $ref: "#/components/parameters/Id" }, { $ref: "#/components/parameters/LimitQuery" }]
+    get:
+      tags: [Systems, Metrics]
+      summary: List raw water-temperature readings for a system
+      responses:
+        "200":
+          description: Raw readings
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SystemWaterTemperature" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/systems/{id}/metrics/ph:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { $ref: "#/components/parameters/MetricStart" }
+      - { $ref: "#/components/parameters/MetricEnd" }
+      - { $ref: "#/components/parameters/MetricLimit" }
+    get:
+      tags: [Systems, Metrics]
+      summary: pH metric series (interval-averaged)
+      responses:
+        "200":
+          description: Averaged metric series
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MetricResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/systems/{id}/metrics/ec:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { $ref: "#/components/parameters/MetricStart" }
+      - { $ref: "#/components/parameters/MetricEnd" }
+      - { $ref: "#/components/parameters/MetricLimit" }
+    get:
+      tags: [Systems, Metrics]
+      summary: EC metric series (interval-averaged)
+      responses:
+        "200":
+          description: Averaged metric series
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MetricResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/systems/{id}/metrics/water-temperature:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { $ref: "#/components/parameters/MetricStart" }
+      - { $ref: "#/components/parameters/MetricEnd" }
+      - { $ref: "#/components/parameters/MetricLimit" }
+    get:
+      tags: [Systems, Metrics]
+      summary: Water-temperature metric series (interval-averaged)
+      responses:
+        "200":
+          description: Averaged metric series
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MetricResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  # ------------------------------------------------------------------ flows
+  /api/flows:
+    get:
+      tags: [Flows]
+      summary: List flows
+      description: |
+        Returns all flows, or flows filtered by `system_id`, or child flows of
+        `parent_flow_id`. `system_id` takes precedence over `parent_flow_id`
+        when both are supplied.
+      parameters:
+        - name: system_id
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+        - name: parent_flow_id
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: Flow list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Flow" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [Flows]
+      summary: Create a flow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FlowRequest" }
+      responses:
+        "201":
+          description: Created flow
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Flow" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409":
+          description: Flow name already exists or referenced system/parent flow does not exist
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/flows/{id}:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [Flows]
+      summary: Get a flow
+      responses:
+        "200":
+          description: Flow
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Flow" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: Flow not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [Flows]
+      summary: Update a flow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FlowRequest" }
+      responses:
+        "200":
+          description: Updated flow
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Flow" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: Flow not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "409":
+          description: Flow name already exists or referenced system/parent flow does not exist
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [Flows]
+      summary: Delete a flow
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/flows/{id}/plants:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [Flows, Plants]
+      summary: List plants attached to a flow's plant sites
+      responses:
+        "200":
+          description: Plants belonging to the flow
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Plant" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  # ------------------------------------------------------------ plant sites
+  /api/plant-sites:
+    get:
+      tags: [PlantSites]
+      summary: List plant sites
+      parameters:
+        - name: flow_id
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+          description: When set, only sites belonging to this flow are returned.
+      responses:
+        "200":
+          description: Plant site list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PlantSite" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [PlantSites]
+      summary: Create a plant site
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlantSiteRequest" }
+      responses:
+        "201":
+          description: Created plant site
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlantSite" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409":
+          description: Referenced flow does not exist
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/plant-sites/{id}:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [PlantSites]
+      summary: Get a plant site
+      responses:
+        "200":
+          description: Plant site
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlantSite" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: Plant site not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [PlantSites]
+      summary: Update a plant site
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlantSiteRequest" }
+      responses:
+        "200":
+          description: Updated plant site
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlantSite" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: Plant site not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "409":
+          description: Referenced flow does not exist
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [PlantSites]
+      summary: Delete a plant site
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/plant-sites/{id}/lux:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [PlantSites, Metrics]
+      summary: List raw lux readings for a plant site
+      responses:
+        "200":
+          description: Raw readings
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PlantSiteLux" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/plant-sites/{id}/metrics/lux:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { $ref: "#/components/parameters/MetricStart" }
+      - { $ref: "#/components/parameters/MetricEnd" }
+      - { $ref: "#/components/parameters/MetricLimit" }
+    get:
+      tags: [PlantSites, Metrics]
+      summary: Lux metric series (interval-averaged)
+      responses:
+        "200":
+          description: Averaged metric series
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MetricResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  # ----------------------------------------------------------------- plants
+  /api/plants:
+    get:
+      tags: [Plants]
+      summary: List plants
+      description: |
+        Returns all plants, or plants filtered by `plant_site_id`, or plants
+        of a given `species_id`. `plant_site_id` takes precedence over
+        `species_id` when both are supplied.
+      parameters:
+        - name: plant_site_id
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+        - name: species_id
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: Plant list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Plant" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [Plants]
+      summary: Create a plant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlantRequest" }
+      responses:
+        "201":
+          description: Created plant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Plant" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409":
+          description: Referenced plant site or species does not exist
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/plants/{id}:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [Plants]
+      summary: Get a plant
+      responses:
+        "200":
+          description: Plant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Plant" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: Plant not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [Plants]
+      summary: Update a plant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlantRequest" }
+      responses:
+        "200":
+          description: Updated plant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Plant" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: Plant not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "409":
+          description: Referenced plant site or species does not exist
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [Plants]
+      summary: Delete a plant
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  # ---------------------------------------------------------- plant genera
+  /api/plant-genera:
+    get:
+      tags: [PlantGenera]
+      summary: List plant genera
+      responses:
+        "200":
+          description: Plant genus list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PlantGenus" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [PlantGenera]
+      summary: Create a plant genus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlantGenusRequest" }
+      responses:
+        "201":
+          description: Created plant genus
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlantGenus" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409":
+          description: Plant genus name already exists
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/plant-genera/{id}:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [PlantGenera]
+      summary: Get a plant genus
+      responses:
+        "200":
+          description: Plant genus
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlantGenus" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: Plant genus not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [PlantGenera]
+      summary: Update a plant genus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlantGenusRequest" }
+      responses:
+        "200":
+          description: Updated plant genus
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlantGenus" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: Plant genus not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "409":
+          description: Plant genus name already exists
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [PlantGenera]
+      summary: Delete a plant genus
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  # --------------------------------------------------------- plant species
+  /api/plant-species:
+    get:
+      tags: [PlantSpecies]
+      summary: List plant species
+      parameters:
+        - name: plant_genus_id
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+          description: When set, only species of this genus are returned.
+      responses:
+        "200":
+          description: Plant species list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PlantSpecies" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [PlantSpecies]
+      summary: Create a plant species
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlantSpeciesRequest" }
+      responses:
+        "201":
+          description: Created plant species
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlantSpecies" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409":
+          description: Plant species name already exists, or referenced plant genus does not exist
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/plant-species/{id}:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [PlantSpecies]
+      summary: Get a plant species
+      responses:
+        "200":
+          description: Plant species
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlantSpecies" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: Plant species not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [PlantSpecies]
+      summary: Update a plant species
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlantSpeciesRequest" }
+      responses:
+        "200":
+          description: Updated plant species
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlantSpecies" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: Plant species not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "409":
+          description: Plant species name already exists, or referenced plant genus does not exist
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [PlantSpecies]
+      summary: Delete a plant species
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  # ------------------------------------------------------------------ notes
+  /api/enclosure-notes:
+    get:
+      tags: [Notes]
+      summary: List enclosure notes
+      responses:
+        "200":
+          description: Note list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SimpleNote" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [Notes]
+      summary: Create an enclosure note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SimpleNoteRequest" }
+      responses:
+        "201":
+          description: Created note
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SimpleNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/enclosure-notes/{id}:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [Notes]
+      summary: Get an enclosure note
+      responses:
+        "200":
+          description: Note
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SimpleNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: enclosure note not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [Notes]
+      summary: Update an enclosure note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SimpleNoteRequest" }
+      responses:
+        "200":
+          description: Updated note
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SimpleNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: enclosure note not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [Notes]
+      summary: Delete an enclosure note
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/system-notes:
+    get:
+      tags: [Notes]
+      summary: List system notes
+      responses:
+        "200":
+          description: Note list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SimpleNote" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [Notes]
+      summary: Create a system note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SimpleNoteRequest" }
+      responses:
+        "201":
+          description: Created note
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SimpleNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/system-notes/{id}:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [Notes]
+      summary: Get a system note
+      responses:
+        "200":
+          description: Note
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SimpleNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: system note not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [Notes]
+      summary: Update a system note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SimpleNoteRequest" }
+      responses:
+        "200":
+          description: Updated note
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SimpleNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: system note not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [Notes]
+      summary: Delete a system note
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/flow-notes:
+    get:
+      tags: [Notes]
+      summary: List flow notes
+      responses:
+        "200":
+          description: Note list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SimpleNote" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [Notes]
+      summary: Create a flow note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SimpleNoteRequest" }
+      responses:
+        "201":
+          description: Created note
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SimpleNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/flow-notes/{id}:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [Notes]
+      summary: Get a flow note
+      responses:
+        "200":
+          description: Note
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SimpleNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: flow note not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [Notes]
+      summary: Update a flow note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SimpleNoteRequest" }
+      responses:
+        "200":
+          description: Updated note
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SimpleNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: flow note not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [Notes]
+      summary: Delete a flow note
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/plant-site-notes:
+    get:
+      tags: [Notes]
+      summary: List plant-site notes
+      parameters:
+        - name: plant_site_id
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+          description: When set, only notes for this plant site are returned.
+      responses:
+        "200":
+          description: Note list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PlantSiteNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [Notes]
+      summary: Create a plant-site note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlantSiteNoteRequest" }
+      responses:
+        "201":
+          description: Created note
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlantSiteNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409":
+          description: Referenced plant site does not exist
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/plant-site-notes/{id}:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [Notes]
+      summary: Get a plant-site note
+      responses:
+        "200":
+          description: Note
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlantSiteNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: Plant site note not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [Notes]
+      summary: Update a plant-site note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlantSiteNoteRequest" }
+      responses:
+        "200":
+          description: Updated note
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlantSiteNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: Plant site note not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "409":
+          description: Referenced plant site does not exist
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [Notes]
+      summary: Delete a plant-site note
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/plant-notes:
+    get:
+      tags: [Notes]
+      summary: List plant notes
+      parameters:
+        - name: plan_id
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+          description: |
+            Filter notes by owning plant. The query parameter is named
+            `plan_id` (matching the underlying column); treat it as `plant_id`.
+      responses:
+        "200":
+          description: Note list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PlantNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [Notes]
+      summary: Create a plant note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlantNoteRequest" }
+      responses:
+        "201":
+          description: Created note
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlantNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409":
+          description: Referenced plant does not exist
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/plant-notes/{id}:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [Notes]
+      summary: Get a plant note
+      responses:
+        "200":
+          description: Note
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlantNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: Plant note not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [Notes]
+      summary: Update a plant note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlantNoteRequest" }
+      responses:
+        "200":
+          description: Updated note
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlantNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: Plant note not found
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "409":
+          description: Referenced plant does not exist
+          content: { $ref: "#/components/responses/ErrorContent" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [Notes]
+      summary: Delete a plant note
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  # ------------------------------------------------------------- timelapse
+  /api/timelapse:
+    get:
+      tags: [Timelapse]
+      summary: List available timelapse recordings
+      description: |
+        Lists the subdirectories under the configured timelapse root. Each
+        directory is named after a device MAC address and represents one
+        timelapse stream.
+      responses:
+        "200":
+          description: Timelapse directory list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TimelapseResponse" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/timelapse/{mac}/timelapse.mjpeg:
+    parameters:
+      - name: mac
+        in: path
+        required: true
+        schema: { type: string }
+        description: Device MAC address identifying the timelapse directory.
+    get:
+      tags: [Timelapse]
+      summary: Stream a timelapse as MJPEG
+      description: |
+        Streams a Motion-JPEG feed assembled from the `.jpeg` frames stored
+        under the device's timelapse directory. Frames are vertically flipped
+        before being sent. The response is a streaming `multipart/x-mixed-replace`
+        MJPEG stream, not a single JSON document.
+      responses:
+        "200":
+          description: MJPEG stream
+          content:
+            multipart/x-mixed-replace:
+              schema:
+                type: string
+                format: binary
+        "500": { $ref: "#/components/responses/InternalError" }
+
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+      description: Numeric resource identifier.
+    LimitQuery:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, format: int64, minimum: 1 }
+      description: |
+        Maximum number of raw readings to return. Defaults to 100; non-positive
+        values fall back to the default.
+    MetricStart:
+      name: start
+      in: query
+      required: false
+      schema: { type: string, format: date-time }
+      description: |
+        Window start (RFC3339). Defaults to 24 hours before `end`.
+    MetricEnd:
+      name: end
+      in: query
+      required: false
+      schema: { type: string, format: date-time }
+      description: Window end (RFC3339). Defaults to the current time.
+    MetricLimit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, format: int64, minimum: 1 }
+      description: |
+        Number of equal-length intervals to bucket the window into. Defaults
+        to 24. Each returned point is the average of the readings in its
+        interval.
+
+  responses:
+    BadRequest:
+      description: Malformed request (invalid id, bad query, or invalid JSON body).
+      content: { $ref: "#/components/responses/ErrorContent" }
+    InternalError:
+      description: Unexpected server error.
+      content: { $ref: "#/components/responses/ErrorContent" }
+    ErrorContent:
+      description: Error response body.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    # ---- entity schemas -------------------------------------------------
+    Enclosure:
+      type: object
+      properties:
+        ID: { type: integer, format: int64 }
+        Name: { type: string }
+      required: [ID, Name]
+
+    EnclosureRequest:
+      type: object
+      properties:
+        name: { type: string }
+      required: [name]
+
+    System:
+      type: object
+      properties:
+        ID: { type: integer, format: int64 }
+        Name: { type: string }
+        EnclosureID: { type: integer, format: int64 }
+      required: [ID, Name, EnclosureID]
+
+    SystemRequest:
+      type: object
+      properties:
+        name: { type: string }
+        enclosure_id: { type: integer, format: int64 }
+      required: [name, enclosure_id]
+
+    Flow:
+      type: object
+      properties:
+        ID: { type: integer, format: int64 }
+        Name: { type: string }
+        SystemID: { type: integer, format: int64 }
+        ParentFlowID:
+          nullable: true
+          oneOf:
+            - { type: integer, format: int64 }
+            - { type: "null" }
+      required: [ID, Name, SystemID, ParentFlowID]
+
+    FlowRequest:
+      type: object
+      properties:
+        name: { type: string }
+        system_id: { type: integer, format: int64 }
+        parent_flow_id:
+          nullable: true
+          oneOf:
+            - { type: integer, format: int64 }
+            - { type: "null" }
+      required: [name, system_id]
+
+    PlantSite:
+      type: object
+      properties:
+        ID: { type: integer, format: int64 }
+        FlowID: { type: integer, format: int64 }
+        X: { type: integer, format: int64 }
+        Y: { type: integer, format: int64 }
+        Z: { type: integer, format: int64 }
+      required: [ID, FlowID, X, Y, Z]
+
+    PlantSiteRequest:
+      type: object
+      properties:
+        flow_id: { type: integer, format: int64 }
+        x: { type: integer, format: int64 }
+        y: { type: integer, format: int64 }
+        z: { type: integer, format: int64 }
+      required: [flow_id, x, y, z]
+
+    Plant:
+      type: object
+      properties:
+        ID: { type: integer, format: int64 }
+        PlantSiteID: { type: integer, format: int64 }
+        PlantedOn:
+          nullable: true
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+        SpeciesID:
+          nullable: true
+          oneOf:
+            - { type: integer, format: int64 }
+            - { type: "null" }
+      required: [ID, PlantSiteID, PlantedOn, SpeciesID]
+
+    PlantRequest:
+      type: object
+      properties:
+        plant_site_id: { type: integer, format: int64 }
+        planted_on:
+          nullable: true
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+        species_id:
+          nullable: true
+          oneOf:
+            - { type: integer, format: int64 }
+            - { type: "null" }
+      required: [plant_site_id]
+
+    PlantGenus:
+      type: object
+      properties:
+        ID: { type: integer, format: int64 }
+        Name: { type: string }
+      required: [ID, Name]
+
+    PlantGenusRequest:
+      type: object
+      properties:
+        name: { type: string }
+      required: [name]
+
+    PlantSpecies:
+      type: object
+      properties:
+        ID: { type: integer, format: int64 }
+        Name: { type: string }
+        PlantGenusID:
+          nullable: true
+          oneOf:
+            - { type: integer, format: int64 }
+            - { type: "null" }
+      required: [ID, Name, PlantGenusID]
+
+    PlantSpeciesRequest:
+      type: object
+      properties:
+        name: { type: string }
+        plant_genus_id:
+          nullable: true
+          oneOf:
+            - { type: integer, format: int64 }
+            - { type: "null" }
+      required: [name]
+
+    # ---- notes ----------------------------------------------------------
+    SimpleNote:
+      description: |
+        Shape shared by enclosure, system, and flow notes: an id, a nullable
+        timestamp, and nullable content text. These tables have no foreign key
+        to their nominal parent.
+      type: object
+      properties:
+        ID: { type: integer, format: int64 }
+        Timestamp:
+          nullable: true
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+        Content:
+          nullable: true
+          oneOf:
+            - { type: string }
+            - { type: "null" }
+      required: [ID, Timestamp, Content]
+
+    SimpleNoteRequest:
+      type: object
+      properties:
+        content:
+          nullable: true
+          oneOf:
+            - { type: string }
+            - { type: "null" }
+        timestamp:
+          nullable: true
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+
+    PlantSiteNote:
+      type: object
+      properties:
+        ID: { type: integer, format: int64 }
+        PlantSiteID: { type: integer, format: int64 }
+        Timestamp: { type: string, format: date-time }
+        Content:
+          nullable: true
+          oneOf:
+            - { type: string }
+            - { type: "null" }
+      required: [ID, PlantSiteID, Timestamp, Content]
+
+    PlantSiteNoteRequest:
+      type: object
+      properties:
+        plant_site_id: { type: integer, format: int64 }
+        content:
+          nullable: true
+          oneOf:
+            - { type: string }
+            - { type: "null" }
+        timestamp:
+          nullable: true
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+      required: [plant_site_id]
+
+    PlantNote:
+      type: object
+      properties:
+        ID: { type: integer, format: int64 }
+        PlanID:
+          nullable: true
+          oneOf:
+            - { type: integer, format: int64 }
+            - { type: "null" }
+          description: Foreign key to plant (column is named `plan_id`).
+        Timestamp: { type: string, format: date-time }
+        Content:
+          nullable: true
+          oneOf:
+            - { type: string }
+            - { type: "null" }
+      required: [ID, PlanID, Timestamp, Content]
+
+    PlantNoteRequest:
+      type: object
+      properties:
+        plan_id:
+          nullable: true
+          oneOf:
+            - { type: integer, format: int64 }
+            - { type: "null" }
+          description: Foreign key to plant (field is named `plan_id`).
+        content:
+          nullable: true
+          oneOf:
+            - { type: string }
+            - { type: "null" }
+        timestamp:
+          nullable: true
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+
+    # ---- sensor readings ------------------------------------------------
+    EnclosureAirTemperature:
+      type: object
+      properties:
+        ID: { type: integer, format: int64 }
+        Timestamp:
+          nullable: true
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+        EnclosureID: { type: integer, format: int64 }
+        TemperatureC: { type: number, format: double }
+      required: [ID, Timestamp, EnclosureID, TemperatureC]
+
+    EnclosureAirHumidity:
+      type: object
+      properties:
+        ID: { type: integer, format: int64 }
+        Timestamp:
+          nullable: true
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+        EnclosureID: { type: integer, format: int64 }
+        HumidityRh: { type: number, format: double }
+      required: [ID, Timestamp, EnclosureID, HumidityRh]
+
+    SystemPh:
+      type: object
+      properties:
+        ID: { type: integer, format: int64 }
+        SystemID: { type: integer, format: int64 }
+        Timestamp:
+          nullable: true
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+        Ph: { type: number, format: double }
+      required: [ID, SystemID, Timestamp, Ph]
+
+    SystemEc:
+      type: object
+      properties:
+        ID: { type: integer, format: int64 }
+        SystemID: { type: integer, format: int64 }
+        Timestamp:
+          nullable: true
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+        Ec: { type: number, format: double }
+      required: [ID, SystemID, Timestamp, Ec]
+
+    SystemWaterTemperature:
+      type: object
+      properties:
+        ID: { type: integer, format: int64 }
+        SystemID: { type: integer, format: int64 }
+        Timestamp:
+          nullable: true
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+        WaterTemperatureC: { type: number, format: double }
+      required: [ID, SystemID, Timestamp, WaterTemperatureC]
+
+    PlantSiteLux:
+      type: object
+      properties:
+        ID: { type: integer, format: int64 }
+        PlantSiteID: { type: integer, format: int64 }
+        Timestamp:
+          nullable: true
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+        Lux: { type: integer, format: int64 }
+      required: [ID, PlantSiteID, Timestamp, Lux]
+
+    MetricResult:
+      type: object
+      properties:
+        Timestamp: { type: string, format: date-time }
+        Value: { type: number, format: double }
+      required: [Timestamp, Value]
+
+    TimelapseResponse:
+      type: object
+      properties:
+        name: { type: string }
+      required: [name]
