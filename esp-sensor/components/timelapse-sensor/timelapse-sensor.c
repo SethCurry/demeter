@@ -1,12 +1,16 @@
+#include "timelapse-sensor.h"
+
 #include <stdint.h>
 #include <stdio.h>
-#include "timelapse-sensor.h"
+#include <string.h>
+
 #include "esp_camera.h"
 #include "esp_camera_af.h"
+#include "esp_log.h"
 #include "esp_wifi.h"
 #include "esp_websocket_client.h"
-#include "demeterws.h"
-#include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 /*
 https://github.com/espressif/esp32-camera/blob/master/examples/camera_example/main/take_picture.c
@@ -15,6 +19,14 @@ CONFIG_CAMERA_PSRAM_DMA=true
 */
 
 static const char *TIMELAPSE_TAG = "timelapse-sensor";
+
+// Largest frame handed to a single continuation message.
+#define TIMELAPSE_CHUNK_SIZE 512
+// How long to wait for a frame from the camera before giving up.
+#define TIMELAPSE_CAPTURE_RETRIES 10
+// How long the upload may stall on a disconnected websocket before the picture
+// is abandoned, so the orchestrator is not blocked forever.
+#define TIMELAPSE_UPLOAD_TIMEOUT_MS 30000
 
 static camera_config_t camera_config = {
     .pin_pwdn = CAM_PIN_PWDN,
@@ -50,20 +62,20 @@ static camera_config_t camera_config = {
     .jpeg_buffer_size = 0, //Set to a custom size in bytes for JPEG mode, or 0 to use the default size
 };
 
+// The server identifies the camera by the station MAC address.
 static char mac_address[13];
-
 
 esp_err_t init_camera(void)
 {
-    uint8_t baseMac[6];
+    uint8_t baseMac[6] = { 0 };
     esp_err_t ret = esp_wifi_get_mac(WIFI_IF_STA, baseMac);
     if (ret != ESP_OK) {
         ESP_LOGE(TIMELAPSE_TAG, "failed to get esp MAC");
+        return ret;
     }
 
-    sprintf(&mac_address[0], "%02x%02x%02x%02x%02x%02x", baseMac[0], baseMac[1], baseMac[2], baseMac[3], baseMac[4], baseMac[5]);
-
-
+    snprintf(mac_address, sizeof(mac_address), "%02x%02x%02x%02x%02x%02x",
+             baseMac[0], baseMac[1], baseMac[2], baseMac[3], baseMac[4], baseMac[5]);
 
     //initialize the camera
     esp_err_t err = esp_camera_init(&camera_config);
@@ -105,17 +117,18 @@ void maybe_init_autofocus(void)
 
 
 void send_demeter_timelapse(esp_websocket_client_handle_t client) {
-    camera_fb_t *pic = esp_camera_fb_get();
-    int i = 0;
+    if (client == NULL) {
+        ESP_LOGW(TIMELAPSE_TAG, "no websocket client, skipping the timelapse");
+        return;
+    }
 
-    while (i < 10) {
-        if (pic == NULL) {
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-            pic = esp_camera_fb_get();
-            i++;
-        } else {
-            i = 11;
+    camera_fb_t *pic = NULL;
+    for (int attempt = 0; attempt < TIMELAPSE_CAPTURE_RETRIES; attempt++) {
+        pic = esp_camera_fb_get();
+        if (pic != NULL) {
+            break;
         }
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
     if (pic == NULL) {
@@ -125,28 +138,73 @@ void send_demeter_timelapse(esp_websocket_client_handle_t client) {
 
     ESP_LOGI(TIMELAPSE_TAG, "took picture of size %zu bytes", pic->len);
 
+    size_t sent = 0;
+    uint8_t *chunk = pic->buf;
 
-    i = 0;
+    esp_websocket_client_send_bin_partial(client, mac_address,
+                                          strlen(mac_address), 0);
 
-    uint8_t *starting_address = pic->buf;
+    TickType_t deadline = xTaskGetTickCount()
+                          + pdMS_TO_TICKS(TIMELAPSE_UPLOAD_TIMEOUT_MS);
 
-    esp_websocket_client_send_bin_partial(client, mac_address, 12, 0);
-
-    while (i < pic->len) {
-        if (esp_websocket_client_is_connected(client)) {
-                int remaining = (pic->len*sizeof (uint8_t)) - i;
-                int to_write = 512;
-                if (remaining < 512) {
-                    to_write = remaining;
-                }
-                esp_websocket_client_send_cont_msg(client, (char *)starting_address, to_write, 0);
-                starting_address = starting_address + 512;//*sizeof (uint8_t);
-                i += to_write;
-                vTaskDelay(50 / portTICK_PERIOD_MS);
-        } else {
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+    while (sent < pic->len) {
+        if (!esp_websocket_client_is_connected(client)) {
+            if ((int32_t)(xTaskGetTickCount() - deadline) >= 0) {
+                ESP_LOGW(TIMELAPSE_TAG, "upload timed out after %zu of %zu bytes",
+                         sent, pic->len);
+                break;
+            }
+            vTaskDelay(pdMS_TO_TICKS(100));
+            continue;
         }
+
+        size_t remaining = pic->len - sent;
+        size_t to_write = remaining < TIMELAPSE_CHUNK_SIZE ? remaining
+                                                           : TIMELAPSE_CHUNK_SIZE;
+        esp_websocket_client_send_cont_msg(client, (char *)chunk, to_write, 0);
+        chunk += to_write;
+        sent += to_write;
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
-    esp_websocket_client_send_fin(client, 0);
+
+    if (sent >= pic->len) {
+        esp_websocket_client_send_fin(client, 0);
+    }
+
     esp_camera_fb_return(pic);
+}
+
+esp_err_t timelapse_sensor_init(void)
+{
+    esp_err_t err = init_camera();
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    maybe_init_autofocus();
+    return ESP_OK;
+}
+
+size_t timelapse_sensor_measure(void *ctx,
+                                demeter_measurement_t *measurements,
+                                size_t max_measurements)
+{
+    (void)measurements;
+    (void)max_measurements;
+
+    // The picture is streamed over the websocket instead of being reported as
+    // a scalar measurement, so nothing is returned to the orchestrator.
+    send_demeter_timelapse((esp_websocket_client_handle_t)ctx);
+    return 0;
+}
+
+demeter_sensor_t timelapse_sensor(esp_websocket_client_handle_t client)
+{
+    return (demeter_sensor_t){
+        .name = TIMELAPSE_TAG,
+        .init = timelapse_sensor_init,
+        .measure = timelapse_sensor_measure,
+        .ctx = client,
+        .interval_ms = TIMELAPSE_SENSOR_INTERVAL_MS,
+    };
 }

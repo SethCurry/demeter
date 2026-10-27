@@ -1,74 +1,125 @@
-#include "onewire_bus.h"
-#include "sdkconfig.h"
-#include "esp_log.h"
-#include "ds18b20.h"
-#include "esp_websocket_client.h"
-#include "demeterws.h"
 #include "ds18b20-sensor.h"
 
-static const char *TAG = "ds18b20-sensor";
-static onewire_bus_handle_t obus;
-static ds18b20_device_handle_t use_ds18b20;
+#include "ds18b20.h"
+#include "esp_log.h"
+#include "onewire_bus.h"
+#include "sdkconfig.h"
 
-onewire_bus_handle_t get_bus_handle() {
-    obus = NULL;
+// Measurement type the server expects for water temperature.
+#define DS18B20_TYPE_WATER_TEMPERATURE 7
+
+static const char *TAG = "ds18b20-sensor";
+
+static onewire_bus_handle_t s_bus;
+static ds18b20_device_handle_t s_device;
+
+static esp_err_t find_device(void)
+{
+    onewire_device_iter_handle_t iter = NULL;
+    esp_err_t err = onewire_new_device_iter(s_bus, &iter);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "failed to enumerate the 1-wire bus: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    onewire_device_t candidate;
+    while ((err = onewire_device_iter_get_next(iter, &candidate)) == ESP_OK) {
+        ds18b20_config_t config = {};
+        ds18b20_device_handle_t device = NULL;
+
+        if (ds18b20_new_device_from_enumeration(&candidate, &config, &device) != ESP_OK) {
+            ESP_LOGI(TAG, "skipping unknown 1-wire device %016llX",
+                     (unsigned long long)candidate.address);
+            continue;
+        }
+
+        onewire_device_address_t address = 0;
+        ds18b20_get_device_address(device, &address);
+        ESP_LOGI(TAG, "found DS18B20 %016llX", (unsigned long long)address);
+        s_device = device;
+        break;
+    }
+
+    if (err != ESP_OK && err != ESP_ERR_NOT_FOUND) {
+        ESP_LOGE(TAG, "1-wire enumeration failed: %s", esp_err_to_name(err));
+    }
+    onewire_del_device_iter(iter);
+
+    if (s_device == NULL) {
+        ESP_LOGE(TAG, "no DS18B20 found on the 1-wire bus");
+        return ESP_ERR_NOT_FOUND;
+    }
+    return ESP_OK;
+}
+
+esp_err_t ds18b20_sensor_init(void)
+{
+    if (s_device != NULL) {
+        return ESP_OK;
+    }
+
     onewire_bus_config_t bus_config = {
         .bus_gpio_num = CONFIG_DS18B20_GPIO,
     };
-
     onewire_bus_rmt_config_t rmt_config = {
-            .max_rx_bytes = 10, // 1byte ROM command + 8byte ROM number + 1byte device command
+        .max_rx_bytes = 10, // 1 byte ROM command + 8 byte ROM + 1 byte command
     };
-    ESP_ERROR_CHECK(onewire_new_bus_rmt(&bus_config, &rmt_config, &obus));
 
-    return obus;
-}
-
-ds18b20_device_handle_t get_ds18b20_handle(onewire_bus_handle_t bus) {
-    int ds18b20_device_num = 0;
-    ds18b20_device_handle_t ds18b20s[1];
-    onewire_device_iter_handle_t iter = NULL;
-    onewire_device_t next_onewire_device;
-    esp_err_t search_result = ESP_OK;
-
-    // create 1-wire device iterator, which is used for device search
-    ESP_ERROR_CHECK(onewire_new_device_iter(obus, &iter));
-    ESP_LOGI(TAG, "Device iterator created, start searching...");
-    do {
-        search_result = onewire_device_iter_get_next(iter, &next_onewire_device);
-        if (search_result == ESP_OK) { // found a new device, let's check if we can upgrade it to a DS18B20
-            ds18b20_config_t ds_cfg = {};
-            onewire_device_address_t address;
-            // check if the device is a DS18B20, if so, return the ds18b20 handle
-            if (ds18b20_new_device_from_enumeration(&next_onewire_device, &ds_cfg, &ds18b20s[ds18b20_device_num]) == ESP_OK) {
-                ds18b20_get_device_address(ds18b20s[ds18b20_device_num], &address);
-                ESP_LOGI(TAG, "Found a DS18B20[%d], address: %016llX", ds18b20_device_num, address);
-                ds18b20_device_num++;
-            } else {
-                ESP_LOGI(TAG, "Found an unknown device, address: %016llX", next_onewire_device.address);
-            }
-                }
-    } while (search_result != ESP_ERR_NOT_FOUND);
-    ESP_ERROR_CHECK(onewire_del_device_iter(iter));
-    ESP_LOGI(TAG, "Searching done, %d DS18B20 device(s) found", ds18b20_device_num);
-
-
-    use_ds18b20 = ds18b20s[0];
-
-    return use_ds18b20;
-}
-
-void send_dsb_data(esp_websocket_client_handle_t client, int target_id, dsb_handle_t *dsb) {
-    float temperature;
-    ds18b20_trigger_temperature_conversion_for_all(obus);
-    int get_result = ds18b20_get_temperature(use_ds18b20, &temperature);
-
-    if (get_result != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get temperature: %d", get_result);
-        return;
-    } else {
-        ESP_LOGI(TAG, "Temperature: %.2f", temperature);
+    esp_err_t err = onewire_new_bus_rmt(&bus_config, &rmt_config, &s_bus);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "failed to create the 1-wire bus: %s", esp_err_to_name(err));
+        return err;
     }
 
-    send_sensor_data(client, 7, target_id, temperature*1000.0);
+    return find_device();
+}
+
+size_t ds18b20_sensor_measure(void *ctx,
+                              demeter_measurement_t *measurements,
+                              size_t max_measurements)
+{
+    (void)ctx;
+
+    if (measurements == NULL || max_measurements == 0) {
+        return 0;
+    }
+    if (s_device == NULL) {
+        ESP_LOGE(TAG, "measure called before init");
+        return 0;
+    }
+
+    // Blocks for the conversion time, which is why this sensor is not on a
+    // timer callback.
+    esp_err_t err = ds18b20_trigger_temperature_conversion_for_all(s_bus);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "failed to trigger a conversion: %s", esp_err_to_name(err));
+        return 0;
+    }
+
+    float temperature = 0.0f;
+    err = ds18b20_get_temperature(s_device, &temperature);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "failed to read the temperature: %s", esp_err_to_name(err));
+        return 0;
+    }
+
+    ESP_LOGI(TAG, "temperature: %.2f C", temperature);
+
+    measurements[0] = (demeter_measurement_t){
+        .target_type = DS18B20_TYPE_WATER_TEMPERATURE,
+        .target_id = CONFIG_DS18B20_SYSTEM_ID,
+        .measurement = (int)(temperature * 1000.0f),
+    };
+    return 1;
+}
+
+demeter_sensor_t ds18b20_sensor(void)
+{
+    return (demeter_sensor_t){
+        .name = TAG,
+        .init = ds18b20_sensor_init,
+        .measure = ds18b20_sensor_measure,
+        .ctx = NULL,
+        .interval_ms = CONFIG_SENSOR_INTERVAL_SECONDS * 1000U,
+    };
 }

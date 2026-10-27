@@ -1,11 +1,15 @@
 #ifndef BH1750_SENSOR_H_
 #define BH1750_SENSOR_H_
 
-#include "esp_websocket_client.h"
-#include "bh1750.h"
+// BH1750 ambient-light sensor for a plant site, exposed as a Demeter sensor.
 
-void send_bh1750_data(esp_websocket_client_handle_t client, int target_id);
+#include "demeter.h"
 
-void get_bh1750_dev();
+demeter_sensor_t bh1750_sensor(void);
+
+esp_err_t bh1750_sensor_init(void);
+size_t bh1750_sensor_measure(void *ctx,
+                             demeter_measurement_t *measurements,
+                             size_t max_measurements);
 
 #endif
