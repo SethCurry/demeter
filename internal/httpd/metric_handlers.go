@@ -3,6 +3,7 @@ package httpd
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -39,14 +40,26 @@ func parseQueryTime(ctx *gin.Context, paramName string, ifEmpty string) (time.Ti
 }
 
 func parseQueryLimit(ctx *gin.Context) (int64, error) {
-	const defaultLimit int64 = 24
+	const (
+		defaultLimit int64 = 24
+		maxLimit     int64 = 10000
+	)
 
 	limitStr := ctx.Query("limit")
 	if limitStr == "" {
 		return defaultLimit, nil
 	}
 
-	return strconv.ParseInt(limitStr, 10, 64)
+	limit, err := strconv.ParseInt(limitStr, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	if limit < 1 || limit > maxLimit {
+		return 0, fmt.Errorf("limit must be between 1 and %d", maxLimit)
+	}
+
+	return limit, nil
 }
 
 // metricByID returns a handler that serves a metric averaged over
@@ -67,15 +80,21 @@ func metricByID(fetch func(ctx context.Context, id int64, start, end time.Time) 
 			return
 		}
 
-		startTime, err := parseQueryTime(ctx, "start", time.Now().Add(-24*time.Hour).Format(time.RFC3339))
+		now := time.Now()
+		startTime, err := parseQueryTime(ctx, "start", now.Add(-24*time.Hour).Format(time.RFC3339))
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		endTime, err := parseQueryTime(ctx, "end", time.Now().Format(time.RFC3339))
+		endTime, err := parseQueryTime(ctx, "end", now.Format(time.RFC3339))
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		if !startTime.Before(endTime) {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "start must be before end"})
 			return
 		}
 
@@ -91,31 +110,55 @@ func metricByID(fetch func(ctx context.Context, id int64, start, end time.Time) 
 
 // averagePointsOverIntervals splits the window [start, end) into limit
 // equal-length intervals and returns the average of the readings in each
-// interval that has at least one reading.
+// interval that has at least one reading. Intervals are emitted in
+// chronological order regardless of the order of the input points.
 func averagePointsOverIntervals(points []metricPoint, start, end time.Time, limit int64) []MetricResult {
-	totalSeconds := int(end.Sub(start).Seconds())
-	intervalSeconds := totalSeconds / int(limit)
-
 	values := []MetricResult{}
-	intervalStartsAt := start
-	intervalEndsAt := start.Add(time.Second * time.Duration(intervalSeconds))
-	var currentSum float64
-	var numValues int
+	if limit < 1 || !start.Before(end) {
+		return values
+	}
 
-	for _, v := range points {
-		if numValues > 0 && v.timestamp.Valid && v.timestamp.Time.After(intervalEndsAt) {
-			values = append(values, MetricResult{
-				Timestamp: intervalStartsAt.Format(time.RFC3339),
-				Value:     currentSum / float64(numValues),
-			})
-			intervalStartsAt = intervalEndsAt
-			intervalEndsAt = intervalStartsAt.Add(time.Second * time.Duration(intervalSeconds))
-			currentSum = 0
-			numValues = 0
-		} else {
-			currentSum += v.value
-			numValues++
+	interval := end.Sub(start) / time.Duration(limit)
+	if interval <= 0 {
+		interval = time.Nanosecond
+	}
+
+	type bucket struct {
+		sum   float64
+		count int
+	}
+
+	buckets := make([]bucket, limit)
+	for _, point := range points {
+		if !point.timestamp.Valid {
+			continue
 		}
+
+		timestamp := point.timestamp.Time
+		if timestamp.Before(start) || !timestamp.Before(end) {
+			continue
+		}
+
+		index := int(timestamp.Sub(start) / interval)
+		if index < 0 || index >= len(buckets) {
+			// The final interval absorbs any remainder when the window does
+			// not divide evenly into limit intervals.
+			index = len(buckets) - 1
+		}
+
+		buckets[index].sum += point.value
+		buckets[index].count++
+	}
+
+	for index, bucket := range buckets {
+		if bucket.count == 0 {
+			continue
+		}
+
+		values = append(values, MetricResult{
+			Timestamp: start.Add(time.Duration(index) * interval).Format(time.RFC3339),
+			Value:     bucket.sum / float64(bucket.count),
+		})
 	}
 
 	return values

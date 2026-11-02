@@ -8,4 +8,7 @@ weight: 910
 toc: true
 ---
 
+Provides:
+- Lux for a single plant site
+
 [Datasheet](./bh1750fvi-e-186247.pdf)

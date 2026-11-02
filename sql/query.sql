@@ -316,33 +316,33 @@ LIMIT ?;
 -- name: MetricsEnclosureAirTemperatures :many
 SELECT * FROM enclosure_air_temperature
 WHERE enclosure_id = ? AND timestamp > ? AND timestamp < ?
-ORDER BY timestamp DESC;
+ORDER BY timestamp ASC;
 
 
 -- name: MetricsEnclosureAirHumidities :many
 SELECT * FROM enclosure_air_humidity
 WHERE enclosure_id = ? AND timestamp > ? AND timestamp < ?
-ORDER BY timestamp DESC;
+ORDER BY timestamp ASC;
 
 -- name: MetricsSystemPH :many
 SELECT * FROM system_ph
 WHERE system_id = ? AND timestamp > ? AND timestamp < ?
-ORDER BY timestamp DESC;
+ORDER BY timestamp ASC;
 
 -- name: MetricsSystemEC :many
 SELECT * FROM system_ec
 WHERE system_id = ? AND timestamp > ? AND timestamp < ?
-ORDER BY timestamp DESC;
+ORDER BY timestamp ASC;
 
 -- name: MetricsSystemWaterTemperature :many
 SELECT * FROM system_water_temperature
 WHERE system_id = ? AND timestamp > ? AND timestamp < ?
-ORDER BY timestamp DESC;
+ORDER BY timestamp ASC;
 
 -- name: MetricsPlantSiteLux :many
 SELECT * FROM plant_site_lux
 WHERE plant_site_id = ? AND timestamp > ? AND timestamp < ?
-ORDER BY timestamp DESC;
+ORDER BY timestamp ASC;
 
 
 -- name: CreateEnclosureAirTemperature :exec

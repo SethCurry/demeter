@@ -1,5 +1,5 @@
 import { Card, Table } from "antd";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { type System } from "../api";
 
 interface SystemListCardProps {
@@ -7,7 +7,6 @@ interface SystemListCardProps {
 }
 
 export default function SystemListCard({ systems }: SystemListCardProps) {
-  const navigate = useNavigate();
   const systemColumns = [
     { title: "ID", dataIndex: "ID", key: "id", width: 60 },
     {
@@ -15,7 +14,7 @@ export default function SystemListCard({ systems }: SystemListCardProps) {
       dataIndex: "Name",
       key: "name",
       render: (name: string, r: System) => (
-        <a onClick={() => navigate(`/systems/${r.ID}`)}>{name}</a>
+        <Link to={`/systems/${r.ID}`}>{name}</Link>
       ),
     },
   ];

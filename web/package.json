@@ -48,5 +48,13 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "jest": {
+    "moduleNameMapper": {
+      "^react-router/dom$": "<rootDir>/node_modules/react-router/dist/development/dom-export.js",
+      "^@rc-component/([^/]+)/locale/(.*)$": "<rootDir>/node_modules/@rc-component/$1/lib/locale/$2",
+      "^@rc-component/([^/]+)/generate/(.*)$": "<rootDir>/node_modules/@rc-component/$1/lib/generate/$2",
+      "^@ant-design/colors/es/(.*)$": "<rootDir>/node_modules/@ant-design/colors/lib/$1"
+    }
   }
 }

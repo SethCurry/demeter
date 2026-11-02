@@ -18,7 +18,7 @@ import {
   TagsOutlined,
   ClusterOutlined,
 } from '@ant-design/icons';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAsync } from '../hooks/useAsync';
 import {
   api,
@@ -105,7 +105,7 @@ const PlantSpeciesDetail: React.FC = () => {
       title: 'Plant',
       key: 'plant',
       render: (_: unknown, r: Plant) => (
-        <a onClick={() => navigate(`/plants/${r.ID}`)}>#{r.ID}</a>
+        <Link to={`/plants/${r.ID}`}>#{r.ID}</Link>
       ),
     },
     {
@@ -123,7 +123,7 @@ const PlantSpeciesDetail: React.FC = () => {
         const site = siteById.get(r.PlantSiteID);
         const flow = site ? flowById.get(site.FlowID) : undefined;
         return flow ? (
-          <a onClick={() => navigate(`/flows/${flow.ID}`)}>{flow.Name}</a>
+          <Link to={`/flows/${flow.ID}`}>{flow.Name}</Link>
         ) : (
           '—'
         );

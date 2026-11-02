@@ -22,7 +22,7 @@ import {
   HomeOutlined,
   PlusOutlined,
 } from "@ant-design/icons";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAsync } from "../hooks/useAsync";
 import AddNoteModal from "../components/AddNoteModal";
 import PhChart from "../components/charts/PhChart";
@@ -191,7 +191,7 @@ const SystemDetail: React.FC = () => {
       dataIndex: "Name",
       key: "name",
       render: (name: string, r: Flow) => (
-        <a onClick={() => navigate(`/flows/${r.ID}`)}>{name}</a>
+        <Link to={`/flows/${r.ID}`}>{name}</Link>
       ),
     },
     {
@@ -202,7 +202,7 @@ const SystemDetail: React.FC = () => {
         if (pid == null) return <Tag>root</Tag>;
         const parent = flowById.get(pid);
         return parent ? (
-          <a onClick={() => navigate(`/flows/${parent.ID}`)}>{parent.Name}</a>
+          <Link to={`/flows/${parent.ID}`}>{parent.Name}</Link>
         ) : (
           `#${pid}`
         );
@@ -227,7 +227,7 @@ const SystemDetail: React.FC = () => {
       render: (_: unknown, r: PlantSite) => {
         const f = flowById.get(r.FlowID);
         return f ? (
-          <a onClick={() => navigate(`/flows/${f.ID}`)}>{f.Name}</a>
+          <Link to={`/flows/${f.ID}`}>{f.Name}</Link>
         ) : (
           "—"
         );
@@ -258,7 +258,7 @@ const SystemDetail: React.FC = () => {
         if (!site) return "—";
         const f = flowById.get(site.FlowID);
         return f ? (
-          <a onClick={() => navigate(`/flows/${f.ID}`)}>{f.Name}</a>
+          <Link to={`/flows/${f.ID}`}>{f.Name}</Link>
         ) : (
           "—"
         );

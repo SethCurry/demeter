@@ -8,4 +8,7 @@ weight: 910
 toc: true
 ---
 
+Provides:
+- Temperature and humidity for an enclosure
+
 [Datasheet](./SHT4X.PDF)

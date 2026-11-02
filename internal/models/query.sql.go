@@ -1661,7 +1661,7 @@ func (q *Queries) ListSystemsByEnclosure(ctx context.Context, enclosureID int64)
 const metricsEnclosureAirHumidities = `-- name: MetricsEnclosureAirHumidities :many
 SELECT id, timestamp, enclosure_id, humidity_rh FROM enclosure_air_humidity
 WHERE enclosure_id = ? AND timestamp > ? AND timestamp < ?
-ORDER BY timestamp DESC
+ORDER BY timestamp ASC
 `
 
 type MetricsEnclosureAirHumiditiesParams struct {
@@ -1701,7 +1701,7 @@ func (q *Queries) MetricsEnclosureAirHumidities(ctx context.Context, arg Metrics
 const metricsEnclosureAirTemperatures = `-- name: MetricsEnclosureAirTemperatures :many
 SELECT id, timestamp, enclosure_id, temperature_c FROM enclosure_air_temperature
 WHERE enclosure_id = ? AND timestamp > ? AND timestamp < ?
-ORDER BY timestamp DESC
+ORDER BY timestamp ASC
 `
 
 type MetricsEnclosureAirTemperaturesParams struct {
@@ -1741,7 +1741,7 @@ func (q *Queries) MetricsEnclosureAirTemperatures(ctx context.Context, arg Metri
 const metricsPlantSiteLux = `-- name: MetricsPlantSiteLux :many
 SELECT id, plant_site_id, timestamp, lux FROM plant_site_lux
 WHERE plant_site_id = ? AND timestamp > ? AND timestamp < ?
-ORDER BY timestamp DESC
+ORDER BY timestamp ASC
 `
 
 type MetricsPlantSiteLuxParams struct {
@@ -1781,7 +1781,7 @@ func (q *Queries) MetricsPlantSiteLux(ctx context.Context, arg MetricsPlantSiteL
 const metricsSystemEC = `-- name: MetricsSystemEC :many
 SELECT id, system_id, timestamp, ec FROM system_ec
 WHERE system_id = ? AND timestamp > ? AND timestamp < ?
-ORDER BY timestamp DESC
+ORDER BY timestamp ASC
 `
 
 type MetricsSystemECParams struct {
@@ -1821,7 +1821,7 @@ func (q *Queries) MetricsSystemEC(ctx context.Context, arg MetricsSystemECParams
 const metricsSystemPH = `-- name: MetricsSystemPH :many
 SELECT id, system_id, timestamp, ph FROM system_ph
 WHERE system_id = ? AND timestamp > ? AND timestamp < ?
-ORDER BY timestamp DESC
+ORDER BY timestamp ASC
 `
 
 type MetricsSystemPHParams struct {
@@ -1861,7 +1861,7 @@ func (q *Queries) MetricsSystemPH(ctx context.Context, arg MetricsSystemPHParams
 const metricsSystemWaterTemperature = `-- name: MetricsSystemWaterTemperature :many
 SELECT id, system_id, timestamp, water_temperature_c FROM system_water_temperature
 WHERE system_id = ? AND timestamp > ? AND timestamp < ?
-ORDER BY timestamp DESC
+ORDER BY timestamp ASC
 `
 
 type MetricsSystemWaterTemperatureParams struct {

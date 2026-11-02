@@ -8,13 +8,12 @@ import {
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useAsync } from '../hooks/useAsync';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { api, type Enclosure, type System, type Flow, type PlantSite } from '../api';
 
 const { Title, Text } = Typography;
 
 const Dashboard: React.FC = () => {
-  const navigate = useNavigate();
   const enc = useAsync<Enclosure[]>(() => api.listEnclosures(), []);
   const sys = useAsync<System[]>(() => api.listSystems(), []);
   const flw = useAsync<Flow[]>(() => api.listFlows(), []);
@@ -77,7 +76,7 @@ const Dashboard: React.FC = () => {
               <List.Item>
                 <Space size="large" wrap style={{ width: '100%' }}>
                   <div style={{ minWidth: 180 }}>
-                    <a onClick={() => navigate(`/systems/${s.ID}`)}><strong>{s.Name}</strong></a>
+                    <Link to={`/systems/${s.ID}`}><strong>{s.Name}</strong></Link>
                     <div><Text type="secondary">{enclosure?.Name ?? '—'}</Text></div>
                   </div>
                   <Tag color="green">{flowCount} flows</Tag>

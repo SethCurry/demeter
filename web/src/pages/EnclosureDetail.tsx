@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Row,
   Col,
@@ -35,19 +35,15 @@ import {
   type Flow,
   type PlantSite,
   type PlantWithFlow,
-  type EnclosureAirTemperature,
-  type EnclosureAirHumidity,
   type SimpleNote,
 } from "../api";
 import PlantListCard from "../components/PlantListCard";
 import SystemListCard from "../components/SystemListCard";
-import TemperatureChart from "../components/charts/TemperatureChart";
-import HumidityChart from "../components/charts/HumidityChart";
-import MetricChart from "../components/charts/MetricChart";
+import MetricChart, {
+  type MetricChartQuery,
+} from "../components/charts/MetricChart";
 
 const { Title, Text } = Typography;
-
-const READING_LIMIT = 20;
 
 const EnclosureDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -55,6 +51,17 @@ const EnclosureDetail: React.FC = () => {
   const enclosureId = Number(id);
 
   const [noteModalOpen, setNoteModalOpen] = useState(false);
+
+  const loadAirTemperature = useCallback(
+    (query: MetricChartQuery) =>
+      api.metricEnclosureAirTemperature(enclosureId, query),
+    [enclosureId],
+  );
+  const loadAirHumidity = useCallback(
+    (query: MetricChartQuery) =>
+      api.metricEnclosureAirHumidity(enclosureId, query),
+    [enclosureId],
+  );
 
   const validId = Number.isFinite(enclosureId) && enclosureId > 0;
 
@@ -314,7 +321,7 @@ const EnclosureDetail: React.FC = () => {
                   tickCallback={(value, a, b) => value + " C"}
                   borderColor="rgba(249, 65, 68, 0.5)"
                   backgroundColor="rgba(249, 132, 74, 0.5)"
-                  loader={() => api.metricEnclosureAirTemperature(enclosureId)}
+                  loader={loadAirTemperature}
                 />
               </Card>
             </Col>
@@ -327,7 +334,7 @@ const EnclosureDetail: React.FC = () => {
                   borderColor="rgba(0, 150, 199, 0.5)"
                   backgroundColor="rgba(72, 202, 228, 0.5)"
                   tickCallback={(value, a, b) => value + " %"}
-                  loader={() => api.metricEnclosureAirHumidity(enclosureId)}
+                  loader={loadAirHumidity}
                 />
               </Card>
             </Col>

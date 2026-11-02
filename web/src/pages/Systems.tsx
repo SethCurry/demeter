@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Typography, Table, Tag, Space, Button, Modal, Form, Input, Select, message, Alert, Spin } from 'antd';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAsync } from '../hooks/useAsync';
 import { api, type Enclosure, type System, type Flow } from '../api';
 
@@ -12,7 +12,6 @@ const Systems: React.FC = () => {
   const sys = useAsync<System[]>(() => api.listSystems(), []);
   const flw = useAsync<Flow[]>(() => api.listFlows(), []);
 
-  const navigate = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm<{ name: string; enclosureId: number }>();
@@ -49,7 +48,7 @@ const Systems: React.FC = () => {
       dataIndex: 'Name',
       key: 'name',
       render: (name: string, r: System) => (
-        <a onClick={() => navigate(`/systems/${r.ID}`)}>{name}</a>
+        <Link to={`/systems/${r.ID}`}>{name}</Link>
       ),
     },
     {
@@ -58,7 +57,7 @@ const Systems: React.FC = () => {
       render: (_: unknown, r: System) => {
         const encl = enclosureById.get(r.EnclosureID);
         return encl ? (
-          <a onClick={() => navigate(`/enclosures/${encl.ID}`)}>{encl.Name}</a>
+          <Link to={`/enclosures/${encl.ID}`}>{encl.Name}</Link>
         ) : (
           '—'
         );

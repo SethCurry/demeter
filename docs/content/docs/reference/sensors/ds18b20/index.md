@@ -8,4 +8,7 @@ weight: 910
 toc: true
 ---
 
+Provides:
+- Temperature for a system
+
 [Datasheet](./DS18B20.pdf)
